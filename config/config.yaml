@@ -1,0 +1,14 @@
+# Application configuration. Committed, so it must hold NO secrets (§3.9).
+#
+# Every key can be overridden from the environment with
+# APPN_LINKED_DATA__<KEY>, e.g. APPN_EXAMPLE__APP__LOG_LEVEL=DEBUG.
+#
+# Validated at startup: an unknown key, a wrong type or a missing value stops the
+# program immediately and names the key (§3.7, §9.1).
+
+app:
+  name: "appn-linked-data"
+  # Quote values that YAML would otherwise read as booleans or numbers (§9.1).
+  environment: "development"   # development | test | production
+  log_level: "INFO"            # DEBUG | INFO | WARNING | ERROR | CRITICAL
+  log_format: "json"           # json (default, for log aggregation) | text

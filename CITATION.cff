@@ -1,0 +1,24 @@
+# Required for any repository producing published research outputs (§3.10).
+# GitHub renders a "Cite this repository" widget from this file.
+# Validate with: cffconvert --validate
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "appn-linked data - APPN linked data tools"
+abstract: "Linked-data tools used across the Australian Plant Phenotyping Network ([APPN](https://[plantphenomics.org.au/])) network, including: Schema definitions for APPN data; Vocabularies containing reusable definitions for APPN facilities, equipment and concepts; Python tools to create, manipulate and query linked-data assets"
+type: software
+authors:
+  - family-names: "Hobern"
+    given-names: "Donald"
+    orcid: "https://orcid.org/0000-0001-6492-4016"
+    affiliation: "Australian Plant Phenomics Network"
+repository-code: "https://github.com/aus-plant-phenomics-network/appn-linked-data"
+url: "https://github.com/aus-plant-phenomics-network/appn-linked-data"
+license: Apache-2.0
+version: "0.1.0"
+date-released: "{{YYYY-MM-DD}}"
+keywords:
+  - plant-phenomics
+  - research-infrastructure
+  - appn
+# Uncomment once the release is archived and a DOI is minted (§3.10):
+# doi: "10.5281/zenodo.{{RECORD_ID}}"

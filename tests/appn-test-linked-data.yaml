@@ -1,0 +1,11 @@
+# APPN test Linked Data configuration #########################################
+#
+# Alternate configuration to test loading from a location specified in the
+# environment.
+
+# Namespaces that should be searched for properties used in vocabulary spreadsheets.
+# These are in descending order of priority - a property in a namespace listed
+# earlier in this list will take precedence over one with the same name listed
+# later.
+vocabulary_column_namespaces:
+  - "http://rs.tdwg.org/dwc/terms/"

@@ -1,0 +1,266 @@
+# ==============================================================================
+# APPN Python project — PEP 621 metadata plus tool configuration.
+# Standards: APPN Coding Standards §4 (Python), §3.6 (Testing), §3.13 (Style).
+#
+# Every rule below that mirrors a written standard cites the section, so that
+# when a check fires, you can find out why it exists.
+# ==============================================================================
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# ------------------------------------------------------------------------------
+# Project metadata (PEP 621)
+# ------------------------------------------------------------------------------
+[project]
+name = "appn-linked-data"
+version = "0.1.0"
+description = "Linked-data tools used across the Australian Plant Phenotyping Network"
+readme = "README.md"
+requires-python = ">=3.11"          # §4.1: 3.11+, 3.12 preferred for new projects
+license = "Apache-2.0"              # §3.10: SPDX identifier; LICENSE file in root
+authors = [
+    { name = "Australian Plant Phenomics Network", email = "data.appn@plantphenomics.org.au" },
+]
+keywords = ["plant-phenomics", "research-infrastructure", "appn"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
+
+# Runtime dependencies. Adding one is a design decision — justify it in the PR
+# (§3.8). Constrain with a lower bound and a compatible upper bound.
+dependencies = [
+    "httpx>=0.27,<1.0",
+    "pydantic>=2.7,<3.0",
+    "pyyaml>=6.0,<7.0",             # config/config.yaml (§9.1)
+    "typer>=0.12,<1.0",             # §4.2: CLIs use argparse or typer
+    "rdflib>=7.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.10",                 # §4.1: formatter (alternative to ruff format)
+    "mypy>=1.13",                   # §4.1: type checker, strict for new code
+    "pre-commit>=4.0",
+    "pytest>=8.3",                  # §4.1: testing
+    "pytest-cov>=6.0",
+    "ruff>=0.8",                    # §4.1: linter (and formatter)
+    "types-python-dateutil",
+    "types-PyYAML",
+]
+
+# [project.scripts]
+# appn-example = "appn_example.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/aus-plant-phenomics-network/appn-linked-data"
+Repository = "https://github.com/aus-plant-phenomics-network/appn-linked-data"
+Issues = "https://github.com/aus-plant-phenomics-network/appn-linked-data/issues"
+Changelog = "https://github.com/aus-plant-phenomics-network/appn-linked-data/blob/main/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/appn_linked_data"]
+
+# ==============================================================================
+# Black — formatter
+# ==============================================================================
+# §4.1 allows Ruff format OR Black. Pick ONE per repository and delete the other
+# from the Makefile, pre-commit config and CI; running both is a merge-conflict
+# generator. The two produce near-identical output, so switching later is cheap.
+#
+#   black .              format in place
+#   black --check .      CI mode: exit non-zero on any file that would change
+#   black --diff .       show what would change without writing
+#
+# Black is deliberately unconfigurable beyond this. That is the point — §2.5,
+# "automate the boring rules": formatting is not a thing to have opinions about.
+[tool.black]
+line-length = 88                    # §3.13 and §4.1
+target-version = ["py311", "py312"]
+
+# Files Black rewrites. Add `|\.ipynb$` to also format committed notebooks —
+# they still get formatted even though they are never the deliverable (§4.4).
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+  | \.venv
+  | \.mypy_cache
+  | \.ruff_cache
+  | build
+  | dist
+  | migrations/versions   # Alembic-generated; leave as the generator wrote it
+)/
+'''
+
+# Preview features change formatting between releases, which shows up as
+# unrelated diff noise in everyone else's pull requests. Leave this off unless
+# the whole repository reformats in one commit.
+preview = false
+
+# ==============================================================================
+# Ruff — linter (and optional formatter)
+# ==============================================================================
+[tool.ruff]
+line-length = 88                    # MUST match [tool.black] line-length
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.format]
+# Only used if this repository chose `ruff format` over Black. Black-compatible
+# by design, so the settings mirror the block above.
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.ruff.lint]
+# Rule families chosen to enforce the written standards mechanically rather than
+# in review (§2.5). Each maps to a section of the guide.
+select = [
+    "F",      # pyflakes — unused imports/variables            §3.13 no dead code
+    "E", "W", # pycodestyle                                    §4.1 PEP 8
+    "I",      # isort — import ordering
+    "N",      # pep8-naming                                    §3.12.1 casing
+    "D",      # pydocstyle — docstrings on public API          §3.5
+    "UP",     # pyupgrade — modern syntax for the target version
+    "ANN",    # flake8-annotations — type hints mandatory      §4.2
+    "S",      # flake8-bandit — security lint                  §3.9
+    "B",      # flake8-bugbear — incl. mutable default args    §4.2
+    "A",      # flake8-builtins — no shadowing id/type/list    §3.12.4
+    "C4",     # flake8-comprehensions
+    "DTZ",    # flake8-datetimez — no naive datetimes          §6 UTC storage
+    "T20",    # flake8-print — print() is not logging          §3.7
+    "LOG",    # flake8-logging
+    "G",      # flake8-logging-format — lazy %-formatting      §4.2
+    "PIE", "PT", "RET", "SIM", "TID", "ARG",
+    "PTH",    # flake8-use-pathlib — no os.path in new code    §4.2
+    "ERA",    # eradicate — commented-out code                 §3.13
+    "TD",     # flake8-todos — TODO needs an issue reference   §3.13
+    "PD",     # pandas-vet — incl. chained assignment          §4.3
+    "NPY",    # numpy-specific rules
+    "PL",     # pylint subset
+    "TRY",    # tryceratops — exception anti-patterns          §3.7
+    "RUF",
+]
+
+ignore = [
+    "D203",    # Conflicts with D211; we use "no blank line before class docstring"
+    "D213",    # Conflicts with D212; we use "summary on the first line"
+    "ANN401",  # Allow `Any` in *args/**kwargs signatures only
+    "TD003",   # Handled by TD002/FIX; we require the issue ref in the text itself
+    "PLR0913", # Argument count — §3.13 caps positionals, keyword-only is fine
+    "TRY003",  # Long messages outside the exception class are often the clearest
+    # Formatter conflicts — leave these to Black / ruff format:
+    "E501",    # Line length is the formatter's job, not the linter's
+    "W191", "E111", "E114", "E117", "D206", "D300", "Q000", "Q001", "Q002",
+    "COM812", "COM819", "ISC001", "ISC002",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests may assert, use magic numbers, and skip docstrings on test functions.
+# S105/S106: tests need obviously fake credentials ("...-not-a-real-credential").
+"tests/**/*.py" = ["S101", "S105", "S106", "PLR2004", "D103", "ANN201", "ARG001"]
+# __init__.py re-exports are not unused imports.
+"**/__init__.py" = ["F401"]
+# Notebooks are exploratory (§4.4).
+"**/*.ipynb" = ["T20", "D103", "ANN"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"               # §4.1: Google or NumPy — pick one per repo
+
+[tool.ruff.lint.isort]
+known-first-party = ["appn_example"]
+required-imports = ["from __future__ import annotations"]   # §4.2
+
+[tool.ruff.lint.flake8-builtins]
+# §3.12.4: shadowing builtins is a naming failure, not something to suppress.
+builtins-ignorelist = []
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.pylint]
+max-args = 6
+max-branches = 12
+max-statements = 50                 # §3.13: functions over ~50 lines do too much
+
+# ==============================================================================
+# mypy — type checking
+# ==============================================================================
+# §4.1: strict mode is recommended but not required. Turn it on with
+# strict = true once the codebase is ready; until then mypy runs in its default
+# mode with the extra checks below.
+[tool.mypy]
+python_version = "3.12"
+files = ["src", "tests"]
+strict = false
+warn_unreachable = true
+warn_no_return = true
+enable_error_code = [
+    "redundant-expr",
+    "truthy-bool",
+    "ignore-without-code",          # Bare `# type: ignore` is not allowed
+    "possibly-undefined",
+]
+pretty = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+# Third-party packages without type information. Each entry is a known gap, not
+# a general licence to skip typing.
+module = ["pandera.*", "matplotlib.*"]
+ignore_missing_imports = true
+
+# ==============================================================================
+# pytest
+# ==============================================================================
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+# §3.6: report coverage (target ≥80%) without failing the build. Add
+# "--cov-fail-under=80" to enforce it. Warnings are treated as errors so
+# deprecations surface while there is still time to act on them.
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+    "--cov=src",
+    "--cov-report=term-missing",
+]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:somenoisydependency.*",
+]
+markers = [
+    "integration: crosses a real boundary (HTTP server, DB, filesystem, container). Deselect with -m 'not integration'.",
+    "slow: takes more than a second.",
+]
+log_cli_level = "INFO"
+
+# ==============================================================================
+# coverage
+# ==============================================================================
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = ["*/__main__.py"]
+
+[tool.coverage.report]
+# §3.6: coverage is a smoke detector, not a goal. Excluding unreachable lines
+# keeps the number honest instead of gaming it.
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@overload",
+    "\\.\\.\\.",
+]
+show_missing = true
+skip_covered = false

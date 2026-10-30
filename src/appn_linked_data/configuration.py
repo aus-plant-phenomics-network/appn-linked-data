@@ -345,7 +345,7 @@ class Configuration:
             self.cache[key] = value
             logger.debug("Cached value for configuration key %s", key.value)
 
-        if isinstance(self.cache[key], list | dir):
+        if isinstance(self.cache[key], list | dict):
             return self.cache[key].copy()  # type: ignore[union-attr]
         return self.cache[key]
 

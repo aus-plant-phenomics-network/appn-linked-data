@@ -1,0 +1,70 @@
+@startuml
+
+component Explorer [
+Explorer (ld_dictionary.py)
+----
+Command line tool
+
+Performs queries against
+a Dictionary.
+]
+
+
+component Dictionary [
+Dictionary (ld_dictionary.py)
+----
+Loads and exposes
+linked-data assets.
+]
+
+component LinkedDataSettings [
+LinkedDataSettings (ld_settings.py)
+----
+Singleton class
+
+Configuration options for
+modules in appn_linked_data.
+]
+
+component NamespaceDefinitionManager [
+NamespaceDefinitionManager (ld_namespaces.py)
+----
+Singleton class
+
+Manages namespaces, prefixes
+and asset locations.
+]
+
+component IRI [
+IRI (ld_iri.py)
+----
+Represents linked-data IRIs using
+known namespaces.
+]
+
+file NamespaceDefinitions [
+    namespace-definitions.yaml
+]
+
+file LinkedDataControlSettings [
+    linked-data-settings.yaml
+]
+
+collections assets [
+    schemas, vocabularies, metadata
+    ----
+    Schemas and vocabularies are
+    packaged in appn_linked_data.
+]
+
+IRI --> NamespaceDefinitionManager: uses
+LinkedDataSettings --> NamespaceDefinitionManager: uses
+LinkedDataSettings --> IRI: uses
+LinkedDataSettings --> LinkedDataControlSettings: reads
+NamespaceDefinitionManager --> NamespaceDefinitions: reads
+Dictionary --> IRI: uses
+Dictionary --> LinkedDataSettings: uses
+Dictionary --> assets: reads
+Explorer --> Dictionary: uses
+
+@enduml

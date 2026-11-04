@@ -9,31 +9,31 @@
 # Map schema/vocabulary namespaces to locations from which machine-readable versions can be accessed
 # Namespaces that are not mapped here will be accessed via the namespace URL.
 namespace_paths:
-  "https://schema.plantphenomics.org.au/": "./appn-schema.ttl"
-  "http://ddialliance.org/Specification/DDI-CDI/1.0/RDF/": "./schema_assets/DDICDILibrary.ttl"
-  "http://purl.org/ppeo/PPEO.owl#": "./schema_assets/PPEO.owl"
-  "https://bioschemas.org/terms/": "./schema_assets/bioschemas_types.ttl"
-  "http://purl.org/dc/terms/": "./schema_assets/dublin_core_terms.rdf"
-  "http://www.w3.org/ns/prov#": "./schema_assets/prov.ttl"
-  "http://www.w3.org/1999/02/22-rdf-syntax-ns#": "./schema_assets/22-rdf-syntax-ns.ttl"
-  "http://www.w3.org/2000/01/rdf-schema#": "./schema_assets/rdf-schema.ttl"
-  "http://schema.org/": "./schema_assets/schemaorg-current-http.ttl"
-  "http://www.w3.org/2004/02/skos/core#": "./schema_assets/skos.rdf"
-  "http://www.w3.org/ns/sosa/": "./schema_assets/sosa.ttl"
-  "http://www.w3.org/ns/ssn/": "./schema_assets/ssn.ttl"
-  "http://rs.tdwg.org/dwc/terms/": "./schema_assets/dwc-terms.ttl"
-  "http://www.w3.org/2002/07/owl#": "./schema_assets/owl.ttl"
-  "https://w3id.org/cdif/": "./schema_assets/cdifCoreStructuredSchema.json"
-  "https://id.plantphenomics.org.au/APPN/": "./vocabulary/APPN/APPN_vocabulary.ttl"
-  "https://id.plantphenomics.org.au/ANU/": "./vocabulary/ANU/ANU_vocabulary.ttl"
-  "https://id.plantphenomics.org.au/AU/": "./vocabulary/AU/AU_vocabulary.ttl"
-  "https://id.plantphenomics.org.au/CSU/": "./vocabulary/CSU/CSU_vocabulary.ttl"
-  "https://id.plantphenomics.org.au/DPIRD/": "./vocabulary/DPIRD/DPIRD_vocabulary.ttl"
-  "https://id.plantphenomics.org.au/LTU/": "./vocabulary/LTU/LTU_vocabulary.ttl"
-  "https://id.plantphenomics.org.au/UQ/": "./vocabulary/UQ/UQ_vocabulary.ttl"
-  "https://id.plantphenomics.org.au/USYD/": "./vocabulary/USYD/USYD_vocabulary.ttl"
-  "https://id.plantphenomics.org.au/UWA/": "./vocabulary/UWA/UWA_vocabulary.ttl"
-  "https://id.plantphenomics.org.au/WSU/": "./vocabulary/WSU/WSU_vocabulary.ttl"
+  "https://schema.plantphenomics.org.au/": "internal"
+  "http://ddialliance.org/Specification/DDI-CDI/1.0/RDF/": "internal"
+  "http://purl.org/ppeo/PPEO.owl#": "internal"
+  "https://bioschemas.org/terms/": "internal"
+  "http://purl.org/dc/terms/": "internal"
+  "http://www.w3.org/ns/prov#": "internal"
+  "http://www.w3.org/1999/02/22-rdf-syntax-ns#": "internal"
+  "http://www.w3.org/2000/01/rdf-schema#": "internal"
+  "http://schema.org/": "internal"
+  "http://www.w3.org/2004/02/skos/core#": "internal"
+  "http://www.w3.org/ns/sosa/": "internal"
+  "http://www.w3.org/ns/ssn/": "internal"
+  "http://rs.tdwg.org/dwc/terms/": "internal"
+  "http://www.w3.org/2002/07/owl#": "internal"
+  "https://w3id.org/cdif/": "internal"
+  "https://id.plantphenomics.org.au/APPN/": "internal"
+  "https://id.plantphenomics.org.au/ANU/": "internal"
+  "https://id.plantphenomics.org.au/AU/": "internal"
+  "https://id.plantphenomics.org.au/CSU/": "internal"
+  "https://id.plantphenomics.org.au/DPIRD/": "internal"
+  "https://id.plantphenomics.org.au/LTU/": "internal"
+  "https://id.plantphenomics.org.au/UQ/": "internal"
+  "https://id.plantphenomics.org.au/USYD/": "internal"
+  "https://id.plantphenomics.org.au/UWA/": "internal"
+  "https://id.plantphenomics.org.au/WSU/": "internal"
 
 # Namespaces that should be searched for properties used in vocabulary spreadsheets.
 # These are in descending order of priority - a property in a namespace listed
@@ -80,7 +80,7 @@ sheet_aliases:
   # Trait is a subclass of ObservedVariable and the "Trait" sheet includes elements
   # associated with ObservedVariable instances. All ObservedVariable instances are
   # also instances of Trait.
-  "Trait": "ObservedVariable"
+  "Trait": "appn:ObservedVariable"
 
 # Overrides for how column names are interpreted.
 column_aliases:

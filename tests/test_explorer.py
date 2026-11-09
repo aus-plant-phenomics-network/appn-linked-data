@@ -175,7 +175,7 @@ EXPLORER_RESULTS: dict[str, str] = {}
 @pytest.fixture
 def explorer_results() -> dict[str, str]:
     if len(EXPLORER_RESULTS) < len(EXPLORER_TESTS):
-        with Popen(  # noqa: S603
+        with Popen(  # noqa: S603 RUF100
             ["python", "src/appn_linked_data/explorer.py", "-a", "au"],  # noqa: S607
             stdin=PIPE,
             stdout=PIPE,

@@ -308,13 +308,20 @@ class Dictionary:
                     # something has gone wrong.
                     if ns == ALT_SCHEMA_SCHEMA:
                         logger.error(
-                            "Unexpected use of alternative schema.org namespace ({ALT_SCHEMA_SCHEMA}) in triple ({s}, {o}, {p})"
+                            "Unexpected use of alternative schema.org namespace ({ALT_SCHEMA_SCHEMA}) in triple (%s, %s, %s)",
+                            str(s),
+                            str(p),
+                            str(o),
                         )
                         success = False
                     # Don't try importing XSD - no RDF representation available
-                    elif ns is not None and ns not in self.loaded and ns != XML_SCHEMA:
-                        if not self.load(ns):
-                            success = False
+                    elif (
+                        ns is not None
+                        and ns not in self.loaded
+                        and ns != XML_SCHEMA
+                        and not self.load(ns)
+                    ):
+                        success = False
                     logger.debug("Found IRI <%s>", iri)
                     iris.add(iri)
         return success
@@ -1207,7 +1214,8 @@ class Dictionary:
 
         if len(iri_types) > 1:
             logger.warning(
-                "IRI {iri} has multiple types: %s",
+                "IRI %s has multiple types: %s",
+                iri.curie,
                 ", ".join([t.curie for t in iri_types]),
             )
 

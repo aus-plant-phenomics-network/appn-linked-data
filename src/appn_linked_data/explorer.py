@@ -1,4 +1,4 @@
-#!/usr/bin/emv python3
+#!/usr/bin/env python3
 
 """Explore contents of APPN linked-data assets (schemas, vocabularies, metadata)."""
 

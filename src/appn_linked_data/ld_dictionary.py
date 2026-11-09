@@ -308,7 +308,8 @@ class Dictionary:
                     # something has gone wrong.
                     if ns == ALT_SCHEMA_SCHEMA:
                         logger.error(
-                            "Unexpected use of alternative schema.org namespace ({ALT_SCHEMA_SCHEMA}) in triple (%s, %s, %s)",
+                            "Unexpected use of alternative schema.org namespace (%s) in triple (%s, %s, %s)",
+                            ALT_SCHEMA_SCHEMA,
                             str(s),
                             str(p),
                             str(o),

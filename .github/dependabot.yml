@@ -1,0 +1,52 @@
+# Dependabot must be enabled on every repository — security AND version
+# updates (§3.8). Uncomment the ecosystems this repository actually uses.
+#
+# Triage: security alerts within one week; critical severity on deployed
+# services within 48 hours.
+version: 2
+updates:
+  # GitHub Actions — applies to every repository.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "ci"
+
+  # Python
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "build"
+    groups:
+      dev-dependencies:
+        patterns: ["pytest*", "ruff", "black", "mypy", "types-*"]
+
+  # --- JavaScript / TypeScript ---
+  # - package-ecosystem: "npm"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   open-pull-requests-limit: 5
+  #   commit-message:
+  #     prefix: "build"
+  #   groups:
+  #     dev-dependencies:
+  #       dependency-type: "development"
+  #     type-definitions:
+  #       patterns: ["@types/*"]
+
+  # --- Containers ---
+  # - package-ecosystem: "docker"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+
+  # --- Terraform ---
+  # - package-ecosystem: "terraform"
+  #   directory: "/infrastructure"
+  #   schedule:
+  #     interval: "monthly"

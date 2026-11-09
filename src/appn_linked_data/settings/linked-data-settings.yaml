@@ -1,0 +1,178 @@
+# APPN Linked Data configuration ##############################################
+#
+# Settings controlling the behaviour of APPN linked-data components.
+#
+# YAML in this file is parsed and exposed by the appn_configuration.Configuration
+# class
+
+# Namespaces that should be searched for properties used in vocabulary spreadsheets.
+# These are in descending order of priority - a property in a namespace listed
+# earlier in this list will take precedence over one with the same name listed
+# later.
+vocabulary_column_namespaces:
+  - "http://schema.org/"
+  - "http://www.w3.org/2004/02/skos/core#"
+  - "http://purl.org/dc/terms/"
+
+# Filter for classes that should be explicitly included as rdf:type values. Each
+# key is a namespace. The value can be "all" for every superclass from the namespace,
+# "first" for the most proximal superclass from the namespace (i.e. the one that is
+# lowest in the hierarchy), or a list of class names.
+explicit_classes:
+  "https://schema.plantphenomics.org.au/": "all"
+  "http://schema.org/": "first"
+
+# Filter for properties that should be explicitly included when they are in the
+# superproperties for an APPN property. Each key is a namespace. The value can be
+# "all" for every superproperty from the namespace (probably not necessary), "first"
+# for the most proximal superproperty from the namespace (i.e. the one that is
+# lowest in the hierarchy), or a list of property names.
+explicit_properties:
+  "http://schema.org/": "first"
+
+# Filter for classes that should NOT be included in explicit classes. A list of IRIs
+# for classes.
+excluded_classes:
+  - "https://schema.plantphenomics.org.au/Variable"
+  - "https://schema.plantphenomics.org.au/Observer"
+  - "https://schema.plantphenomics.org.au/Controller"
+  - "https://schema.plantphenomics.org.au/Sampler"
+  - "http://schema.org/Enumeration"
+  - "http://schema.org/Intangible"
+  - "http://schema.org/Thing"
+
+# Filter for properties that should NOT be included in explicit properties. A list of IRIs
+# for properties.
+excluded_properties: []
+
+# Overrides for how sheet names are interpreted.
+sheet_aliases:
+  # Trait is a subclass of ObservedVariable and the "Trait" sheet includes elements
+  # associated with ObservedVariable instances. All ObservedVariable instances are
+  # also instances of Trait.
+  "Trait": "ObservedVariable"
+
+# Overrides for how column names are interpreted.
+column_aliases:
+  # parent is an alias for appn:higherTaxon with a BiologicalMaterial instance as
+  # the object.
+  "parent": "BiologicalMaterial"
+
+# Rules for completing missing information - specifies a property to add if not
+# already present, and how to construct the value. This is a dictionary of
+# classes to sets of rules, with each rule keyed by a property requiring
+# completion.
+#
+# If an instance of the class lacks the property indicated by a key in the rules
+# dictionary, the value of the key includes a type property that specifies the
+# rule algorithm. At present, only "reflexive" is defined - this indicates that
+# the class instance should reference itself using the named property.
+completion_rules:
+  "appn:ObservedVariable":
+    - "reflexive_property": "https://schema.plantphenomics.org.au/hasTrait"
+  "appn:ControlledVariable":
+    - "reflexive_property": "https://schema.plantphenomics.org.au/hasTrait"
+
+# Abbreviated names for classes for use in composing IRIs
+# NOTE: These prefixes have been used to construct IRIs for existing
+# APPN instances in vocabularies. Do not change abbreviations for any
+# exising classes. ONLY update this list for wholly new classes.
+class_abbreviations:
+  "appn:BiologicalMaterial": "bm"
+  "appn:BiologicalUnit": "bu"
+  "appn:BiologicalUnitType": "but"
+  "appn:ConceptScheme": "cs"
+  "appn:ControlledVariable": "cv"
+  "appn:Deployment": "deploy"
+  "appn:ExternalEvent": "event"
+  "appn:GrowthFacility": "gf"
+  "appn:GrowthFacilityType": "gft"
+  "appn:MaterialSource": "ms"
+  "appn:Observation": "obs"
+  "appn:ObservationUnit": "ou"
+  "appn:ObservedVariable": "ov"
+  "appn:PlatformType": "pt"
+  "appn:ResearchActivity": "ra"
+  "appn:SensorType": "st"
+  "appn:SoftwareApplication": "software"
+  "appn:SpatialLocation": "sl"
+  "appn:SubstanceQuantity": "sq"
+  "appn:XYZLocation": "xyz"
+  "appn:PhysicalContainmentLevel": "pc"
+  "appn:BiocontainmentLevel": "bc"
+
+# Additional properties to be added whenever a specified property is added.
+# Both properties get the same value.
+property_expansions:
+  "http://schema.org/name":
+    - "http://purl.org/dc/terms/title"
+    - "http://www.w3.org/2004/02/skos/core#prefLabel"
+  "http://schema.org/description":
+    - "http://purl.org/dc/terms/description"
+
+# Classes for which properties may be embedded in the definition of another
+# class. Any columns with names starting with the embedded classname
+# in lowercase will be grouped as the definition for a referenced instance
+# of the embedded class.
+embedded_classes:
+  "appn:ObservedVariable":
+    - "appn:Method"
+
+# Properties specified for use when a property is required between an
+# instance of one (domain) class and an instance of a referenced (range)
+# class. If no domain-range property is specified for a pair of classes,
+# known properties will be checked. If only one matches the combination,
+# it will be used. Otherwise, an error will be logged.
+domain_range_properties:
+  "appn:GrowthFacility":
+    "appn:Sensor": "https://schema.plantphenomics.org.au/hosts"
+
+# Classes specified to ensure that property values are mapped to IRIs
+# rather than treated as literal values.
+property_range_classes:
+  "appn:GrowthFacility":
+    "appn:hasGrowthFacilityType": "https://schema.plantphenomics.org.au/GrowthFacilityType"
+  "appn:BiologicalMaterial":
+    "skos:broader": "https://schema.plantphenomics.org.au/BiologicalMaterial"
+
+# Classes that should be serialised to CSV in RO-Crates.
+ro_crate_table_classes:
+  - "appn:ObservationUnit"
+  - "appn:Observation"
+  - "appn:Control"
+  - "appn:Treatment"
+  - "appn:Location"
+
+# Properties associated with APPN and its nodes
+organisations:
+  - id: "APPN"
+    name: "Australian Plant Phenomics Network"
+    ror: "https://ror.org/02zj7b759"
+    prefix: "appnid"
+  - id: "ANU"
+    name: "Australian National University"
+    ror: "https://ror.org/019wvm592"
+  - id: "AU"
+    name: "Adelaide University"
+    ror: "https://ror.org/028g18b61"
+  - id: "CSU"
+    name: "Charles Sturt University"
+    ror: "https://ror.org/00wfvh315 "
+  - id: "DPIRD"
+    name: "WA Department of Primary Industry and Regional Development"
+    ror: "https://ror.org/01awp2978"
+  - id: "LTU"
+    name: "La Trobe University"
+    ror: "https://ror.org/01rxfrp27"
+  - id: "UQ"
+    name: "University of Queensland"
+    ror: "https://ror.org/00rqy9422"
+  - id: "USYD"
+    name: "University of Sydney"
+    ror: "https://ror.org/0384j8v12"
+  - id: "UWA"
+    name: "University of Western Australia"
+    ror: "https://ror.org/047272k79"
+  - id: "WSU"
+    name: "Western Sydney University"
+    ror: "https://ror.org/03t52dk35"

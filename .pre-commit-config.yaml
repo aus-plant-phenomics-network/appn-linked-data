@@ -1,0 +1,62 @@
+# Python hooks. Merge this with templates/shared/.pre-commit-config.yaml —
+# the shared file carries the language-agnostic hooks (secrets, line endings,
+# Conventional Commits).
+#
+#   pip install pre-commit && pre-commit install
+#   pre-commit run --all-files
+default_install_hook_types: [pre-commit, commit-msg]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=2000]
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: trailing-whitespace
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+      # Formatter: keep EITHER this hook OR the Black hook below, never both
+      # (§4.1 — one formatter per repository).
+      - id: ruff-format
+
+  # --- Alternative formatter: Black -------------------------------------------
+  # Uncomment this block and delete the ruff-format hook above if this
+  # repository formats with Black. Configuration lives in [tool.black].
+  # - repo: https://github.com/psf/black-pre-commit-mirror
+  #   rev: 24.10.0
+  #   hooks:
+  #     - id: black
+  #       language_version: python3.12
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.1
+    hooks:
+      - id: mypy
+        # Hook runs in its own isolated env, so it needs the type stubs the
+        # project depends on.
+        # Strictness comes from [tool.mypy] in pyproject.toml.
+        additional_dependencies: [pydantic>=2.7, types-python-dateutil, types-PyYAML]
+
+  # Notebooks: strip outputs so diffs stay readable (§4.4).
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.8.1
+    hooks:
+      - id: nbstripout
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.0.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [feat, fix, docs, refactor, test, chore, perf, build, ci]

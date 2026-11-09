@@ -1,0 +1,93 @@
+# --- Secrets and credentials: never commit (§3.3, §3.9) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+.netrc
+
+# --- Research data and large artefacts ---
+# Data lives in object storage, not git. Use Git LFS only where versioning a
+# binary is genuinely required.
+data/
+*.csv
+*.parquet
+*.sqlite
+*.db
+*.dump
+*.sql.gz
+!tests/**/*.csv
+!tests/**/*.parquet
+
+# --- Local environment and tooling ---
+.direnv/
+.tool-versions.local
+
+# --- Editors and OS ---
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+.~*.xlsx#
+
+# --- Logs and scratch ---
+*.log
+logs/
+tmp/
+scratch/
+
+# Python-specific. Append the shared .gitignore (secrets, data, editors, OS)
+# from templates/shared/.gitignore.
+
+# --- Byte-compiled and caches ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+.pytype/
+.cython_debug/
+
+# --- Distribution and build ---
+build/
+dist/
+sdist/
+wheels/
+*.egg-info/
+*.egg
+.eggs/
+MANIFEST
+
+# --- Environments ---
+.venv/
+venv/
+env/
+ENV/
+.python-version.local
+
+# --- Coverage and profiling ---
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.prof
+
+# --- Notebooks (§4.4: clear outputs before committing) ---
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# --- Tooling ---
+.tox/
+.nox/
+.hypothesis/
+.pdm-python

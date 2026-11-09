@@ -1,0 +1,723 @@
+@prefix appn: <https://schema.plantphenomics.org.au/> .
+@prefix appnid: <https://id.plantphenomics.org.au/APPN/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix schema: <http://schema.org/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+appnid:bc_BC5.2.4 a skos:Concept,
+        appn:BiocontainmentLevel ;
+    dcterms:description "Biosecurity containment level for plant material" ;
+    dcterms:title "BC5.2.4" ;
+    schema:description "Biosecurity containment level for plant material" ;
+    schema:name "BC5.2.4" ;
+    skos:inScheme appnid:cs_BiocontainmentLevel ;
+    skos:prefLabel "BC5.2.4 (BiocontainmentLevel)" .
+
+appnid:bm_Barley a skos:Concept,
+        appn:BiologicalMaterial ;
+    dcterms:description "Barley, a member of the grass family, is a major cereal grain grown in temperate climates globally." ;
+    dcterms:title "barley" ;
+    schema:description "Barley, a member of the grass family, is a major cereal grain grown in temperate climates globally." ;
+    schema:name "barley" ;
+    skos:broader appnid:bm_Grain ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/NCBITaxon_4512>,
+        <http://purl.obolibrary.org/obo/NCBITaxon_4513>,
+        <https://en.wikipedia.org/wiki/Barley> ;
+    skos:inScheme appnid:cs_BiologicalMaterial ;
+    skos:prefLabel "barley (BiologicalMaterial)" ;
+    appn:genus "Hordeum " ;
+    appn:scientificName "Hordeum vulgare" .
+
+appnid:bm_Cannabis a skos:Concept,
+        appn:BiologicalMaterial ;
+    dcterms:description "Cannabis sativa is an annual herbaceous flowering plant." ;
+    dcterms:title "cannabis" ;
+    schema:description "Cannabis sativa is an annual herbaceous flowering plant." ;
+    schema:name "cannabis" ;
+    skos:broader appnid:bm_AnyPlant ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/NCBITaxon_3482>,
+        <http://purl.obolibrary.org/obo/NCBITaxon_3483>,
+        <https://en.wikipedia.org/wiki/Cannabis_sativa> ;
+    skos:inScheme appnid:cs_BiologicalMaterial ;
+    skos:prefLabel "cannabis (BiologicalMaterial)" ;
+    appn:genus "Cannabis " ;
+    appn:scientificName "Cannabis sativa" .
+
+appnid:bm_Tomato a skos:Concept,
+        appn:BiologicalMaterial ;
+    dcterms:description "The tomato is a plant whose fruit is an edible berry that is eaten as a vegetable." ;
+    dcterms:title "tomato" ;
+    schema:description "The tomato is a plant whose fruit is an edible berry that is eaten as a vegetable." ;
+    schema:name "tomato" ;
+    skos:broader appnid:bm_AnyPlant ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/NCBITaxon_4081>,
+        <http://purl.obolibrary.org/obo/NCBITaxon_4107>,
+        <https://en.wikipedia.org/wiki/Tomato> ;
+    skos:inScheme appnid:cs_BiologicalMaterial ;
+    skos:prefLabel "tomato (BiologicalMaterial)" ;
+    appn:genus "Solanum " ;
+    appn:scientificName "Solanum lycopersicum" .
+
+appnid:bm_Wheat a skos:Concept,
+        appn:BiologicalMaterial ;
+    dcterms:description "Wheat is a group of wild and domesticated grasses of the genus Triticum." ;
+    dcterms:title "wheat" ;
+    schema:description "Wheat is a group of wild and domesticated grasses of the genus Triticum." ;
+    schema:name "wheat" ;
+    skos:broader appnid:bm_Grain ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/NCBITaxon_4565>,
+        <https://en.wikipedia.org/wiki/Wheat> ;
+    skos:inScheme appnid:cs_BiologicalMaterial ;
+    skos:prefLabel "wheat (BiologicalMaterial)" ;
+    appn:genus "Triticum " ;
+    appn:scientificName "Triticum aestivum" .
+
+appnid:but_Branch a skos:Concept,
+        appn:BiologicalUnitType ;
+    dcterms:description "An ObservationUnit comprising a branch" ;
+    dcterms:title "branch" ;
+    schema:description "An ObservationUnit comprising a branch" ;
+    schema:name "branch" ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/PO_0025073> ;
+    skos:inScheme appnid:cs_BiologicalUnitType ;
+    skos:prefLabel "branch (BiologicalUnitType)" .
+
+appnid:but_Canopy a skos:Concept,
+        appn:BiologicalUnitType ;
+    dcterms:description "An ObservationUnit comprising a canopy" ;
+    dcterms:title "canopy" ;
+    schema:description "An ObservationUnit comprising a canopy" ;
+    schema:name "canopy" ;
+    skos:inScheme appnid:cs_BiologicalUnitType ;
+    skos:prefLabel "canopy (BiologicalUnitType)" .
+
+appnid:but_Flower a skos:Concept,
+        appn:BiologicalUnitType ;
+    dcterms:description "An ObservationUnit comprising a flower" ;
+    dcterms:title "flower" ;
+    schema:description "An ObservationUnit comprising a flower" ;
+    schema:name "flower" ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/PO_0009046> ;
+    skos:inScheme appnid:cs_BiologicalUnitType ;
+    skos:prefLabel "flower (BiologicalUnitType)" .
+
+appnid:but_Fruit a skos:Concept,
+        appn:BiologicalUnitType ;
+    dcterms:description "An ObservationUnit comprising a fruit" ;
+    dcterms:title "fruit" ;
+    schema:description "An ObservationUnit comprising a fruit" ;
+    schema:name "fruit" ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/PO_0009001> ;
+    skos:inScheme appnid:cs_BiologicalUnitType ;
+    skos:prefLabel "fruit (BiologicalUnitType)" .
+
+appnid:but_Leaf a skos:Concept,
+        appn:BiologicalUnitType ;
+    dcterms:description "An ObservationUnit comprising a leaf" ;
+    dcterms:title "leaf" ;
+    schema:description "An ObservationUnit comprising a leaf" ;
+    schema:name "leaf" ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/PO_0025034> ;
+    skos:inScheme appnid:cs_BiologicalUnitType ;
+    skos:prefLabel "leaf (BiologicalUnitType)" .
+
+appnid:but_Root a skos:Concept,
+        appn:BiologicalUnitType ;
+    dcterms:description "An ObservationUnit comprising a root" ;
+    dcterms:title "root" ;
+    schema:description "An ObservationUnit comprising a root" ;
+    schema:name "root" ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/PO_0009005> ;
+    skos:inScheme appnid:cs_BiologicalUnitType ;
+    skos:prefLabel "root (BiologicalUnitType)" .
+
+appnid:but_Seed a skos:Concept,
+        appn:BiologicalUnitType ;
+    dcterms:description "An ObservationUnit comprising a seed" ;
+    dcterms:title "seed" ;
+    schema:description "An ObservationUnit comprising a seed" ;
+    schema:name "seed" ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/PO_0009010> ;
+    skos:inScheme appnid:cs_BiologicalUnitType ;
+    skos:prefLabel "seed (BiologicalUnitType)" .
+
+appnid:but_Shoot a skos:Concept,
+        appn:BiologicalUnitType ;
+    dcterms:description "An ObservationUnit comprising a shoot" ;
+    dcterms:title "shoot" ;
+    schema:description "An ObservationUnit comprising a shoot" ;
+    schema:name "shoot" ;
+    skos:inScheme appnid:cs_BiologicalUnitType ;
+    skos:prefLabel "shoot (BiologicalUnitType)" .
+
+appnid:but_Spike a skos:Concept,
+        appn:BiologicalUnitType ;
+    dcterms:description "An ObservationUnit comprising a spike" ;
+    dcterms:title "spike" ;
+    schema:description "An ObservationUnit comprising a spike" ;
+    schema:name "spike" ;
+    skos:inScheme appnid:cs_BiologicalUnitType ;
+    skos:prefLabel "spike (BiologicalUnitType)" .
+
+appnid:but_Spikelet a skos:Concept,
+        appn:BiologicalUnitType ;
+    dcterms:description "An ObservationUnit comprising a spikelet" ;
+    dcterms:title "spikelet" ;
+    schema:description "An ObservationUnit comprising a spikelet" ;
+    schema:name "spikelet" ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/PO_0009051> ;
+    skos:inScheme appnid:cs_BiologicalUnitType ;
+    skos:prefLabel "spikelet (BiologicalUnitType)" .
+
+appnid:but_Stem a skos:Concept,
+        appn:BiologicalUnitType ;
+    dcterms:description "An ObservationUnit comprising a stem" ;
+    dcterms:title "stem" ;
+    schema:description "An ObservationUnit comprising a stem" ;
+    schema:name "stem" ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/PO_0009047> ;
+    skos:inScheme appnid:cs_BiologicalUnitType ;
+    skos:prefLabel "stem (BiologicalUnitType)" .
+
+appnid:but_WholePlant a skos:Concept,
+        appn:BiologicalUnitType ;
+    dcterms:description "An ObservationUnit comprising a plant" ;
+    dcterms:title "whole plant" ;
+    schema:description "An ObservationUnit comprising a plant" ;
+    schema:name "whole plant" ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/PO_0000003> ;
+    skos:inScheme appnid:cs_BiologicalUnitType ;
+    skos:prefLabel "whole plant (BiologicalUnitType)" .
+
+appnid:gft_Cohort a skos:Concept,
+        appn:GrowthFacilityType ;
+    dcterms:description "A cohort is a collection of material entities grouped together based on some common property of interest, such as age or disease stage" ;
+    dcterms:title "cohort" ;
+    schema:description "A cohort is a collection of material entities grouped together based on some common property of interest, such as age or disease stage" ;
+    schema:name "cohort" ;
+    skos:inScheme appnid:cs_GrowthFacilityType ;
+    skos:prefLabel "cohort (GrowthFacilityType)" .
+
+appnid:gft_Glasshouse a skos:Concept,
+        appn:GrowthFacilityType ;
+    dcterms:description "Glasshouse facilities include naturally ventilated, air-conditioned, and evaporatively cooled glasshouses, as well as advanced research bays with automated control of lighting, fertigation, and environmental conditions, and may operate under specific containment levels (e.g., PC2) to support safe and compliant research." ;
+    dcterms:title "glasshouse" ;
+    schema:description "Glasshouse facilities include naturally ventilated, air-conditioned, and evaporatively cooled glasshouses, as well as advanced research bays with automated control of lighting, fertigation, and environmental conditions, and may operate under specific containment levels (e.g., PC2) to support safe and compliant research." ;
+    schema:name "glasshouse" ;
+    skos:altLabel "controlled environment glasshouse",
+        "smarthouse" ;
+    skos:inScheme appnid:cs_GrowthFacilityType ;
+    skos:prefLabel "glasshouse (GrowthFacilityType)" .
+
+appnid:gft_Pot a skos:Concept,
+        appn:GrowthFacilityType ;
+    dcterms:description "A rounded container used to cultivate plant." ;
+    dcterms:title "pot" ;
+    schema:description "A rounded container used to cultivate plant." ;
+    schema:name "pot" ;
+    skos:inScheme appnid:cs_GrowthFacilityType ;
+    skos:prefLabel "pot (GrowthFacilityType)" .
+
+appnid:gft_ReachInGrowthChamber a skos:Concept,
+        appn:GrowthFacilityType ;
+    dcterms:description "Conviron reach-in cabinets are compact growth chambers that provide precise environmental control for plant and biological experiments. Available models (PCG20, PCG-Flex, ATC60, Adaptis A1000) support a range of research applications, from standard growth studies to advanced, programmable environmental simulations." ;
+    dcterms:title "reach-in growth chamber" ;
+    schema:description "Conviron reach-in cabinets are compact growth chambers that provide precise environmental control for plant and biological experiments. Available models (PCG20, PCG-Flex, ATC60, Adaptis A1000) support a range of research applications, from standard growth studies to advanced, programmable environmental simulations." ;
+    schema:name "reach-in growth chamber" ;
+    skos:altLabel "reach-in growth cabinet" ;
+    skos:inScheme appnid:cs_GrowthFacilityType ;
+    skos:prefLabel "reach-in growth chamber (GrowthFacilityType)" .
+
+appnid:gft_Rhizolysimiter a skos:Concept,
+        appn:GrowthFacilityType ;
+    dcterms:description "A soil–plant experimental unit used to grow plants and facilitate the observation and measurement of root development and other below-ground processes in the root zone." ;
+    dcterms:title "rhizolysimiter" ;
+    schema:description "A soil–plant experimental unit used to grow plants and facilitate the observation and measurement of root development and other below-ground processes in the root zone." ;
+    schema:name "rhizolysimiter" ;
+    skos:altLabel "rhizobox",
+        "rhizotube" ;
+    skos:inScheme appnid:cs_GrowthFacilityType ;
+    skos:prefLabel "rhizolysimiter (GrowthFacilityType)" .
+
+appnid:gft_WalkInGrowthRoom a skos:Concept,
+        appn:GrowthFacilityType ;
+    dcterms:description "PSI walk-in chambers (BDW40, BDW80, MTPS144) are large controlled-environment growth rooms that enable precise regulation of temperature, lighting, humidity, and atmospheric conditions. They are designed for larger-scale plant experiments, supporting reproducible research from routine studies to advanced environmental simulations." ;
+    dcterms:title "walk-in growth room" ;
+    schema:description "PSI walk-in chambers (BDW40, BDW80, MTPS144) are large controlled-environment growth rooms that enable precise regulation of temperature, lighting, humidity, and atmospheric conditions. They are designed for larger-scale plant experiments, supporting reproducible research from routine studies to advanced environmental simulations." ;
+    schema:name "walk-in growth room" ;
+    skos:altLabel "Walk-in growth cabinet",
+        "controlled environment room",
+        "outdoor walk-in growth chamber" ;
+    skos:inScheme appnid:cs_GrowthFacilityType ;
+    skos:prefLabel "walk-in growth room (GrowthFacilityType)" .
+
+appnid:gft_WholeTreeChamber a skos:Concept,
+        appn:GrowthFacilityType ;
+    dcterms:description "Whole tree chambers are controlled-environment systems that enclose individual trees, either potted or rooted in soil, within large structures exposed to natural sunlight. These chambers enable precise regulation of atmospheric conditions such as carbon dioxide, temperature, and humidity, while continuously measuring gas exchange between the tree canopy and the surrounding air. Designed for field-based research, they support experiments that simulate climate change conditions and allow detailed study of whole-tree responses at high temporal resolution." ;
+    dcterms:title "whole tree chamber" ;
+    schema:description "Whole tree chambers are controlled-environment systems that enclose individual trees, either potted or rooted in soil, within large structures exposed to natural sunlight. These chambers enable precise regulation of atmospheric conditions such as carbon dioxide, temperature, and humidity, while continuously measuring gas exchange between the tree canopy and the surrounding air. Designed for field-based research, they support experiments that simulate climate change conditions and allow detailed study of whole-tree responses at high temporal resolution." ;
+    schema:name "whole tree chamber" ;
+    skos:inScheme appnid:cs_GrowthFacilityType ;
+    skos:prefLabel "whole tree chamber (GrowthFacilityType)" .
+
+appnid:pc_PC1 a skos:Concept,
+        appn:PhysicalContainmentLevel ;
+    dcterms:description """A facility certified as a PC 1 Facility is appropriate for the conduct of the dealings listed below, provided it meets the specific requirements described in the PC 1 Facility guidelines for the dealing type:
+
+- GM micro-organisms (when there is less than or equal to 25 litres of culture of any one GMO);
+- GM animals (whether or not they contain microorganisms) as permitted by the Gene Technology Regulations 2001;
+- non GM animals containing GM micro-organisms; and
+- non-GM plants that contain or host GMOs.
+
+A PC 1 Facility is not appropriate for the following:
+
+- dealings with any GMO that under the Act, or under the conditions of a licence, requires containment in any PC level higher than PC 1.""" ;
+    dcterms:title "PC1" ;
+    schema:description """A facility certified as a PC 1 Facility is appropriate for the conduct of the dealings listed below, provided it meets the specific requirements described in the PC 1 Facility guidelines for the dealing type:
+
+- GM micro-organisms (when there is less than or equal to 25 litres of culture of any one GMO);
+- GM animals (whether or not they contain microorganisms) as permitted by the Gene Technology Regulations 2001;
+- non GM animals containing GM micro-organisms; and
+- non-GM plants that contain or host GMOs.
+
+A PC 1 Facility is not appropriate for the following:
+
+- dealings with any GMO that under the Act, or under the conditions of a licence, requires containment in any PC level higher than PC 1.""" ;
+    schema:name "PC1" ;
+    skos:altLabel "Physical Containment Level 1" ;
+    skos:inScheme appnid:cs_PhysicalContainmentLevel ;
+    skos:prefLabel "PC1 (PhysicalContainmentLevel)" .
+
+appnid:pc_PC2 a skos:Concept,
+        appn:PhysicalContainmentLevel ;
+    dcterms:description """A facility certified as a PC 2 Plant Facility is appropriate for the conduct of the dealings listed below:
+
+- the growing of GM terrestrial plants; or
+- the growing of terrestrial plants that contain GMOs.
+
+A PC 2 Plant Facility is not appropriate for the following:
+
+- dealings with any GMO that under the conditions of a licence or legislation requires containment in any PC level higher than PC 2;
+- the housing/keeping/rearing of any animals, invertebrates, or aquatic organisms unless they are integral to the dealing being contained in the facility;
+- dealings producing more than 25 litres of liquid culture of GMOs in each vessel; or
+- any other work prohibited in writing by the Regulator.""" ;
+    dcterms:title "PC2" ;
+    schema:description """A facility certified as a PC 2 Plant Facility is appropriate for the conduct of the dealings listed below:
+
+- the growing of GM terrestrial plants; or
+- the growing of terrestrial plants that contain GMOs.
+
+A PC 2 Plant Facility is not appropriate for the following:
+
+- dealings with any GMO that under the conditions of a licence or legislation requires containment in any PC level higher than PC 2;
+- the housing/keeping/rearing of any animals, invertebrates, or aquatic organisms unless they are integral to the dealing being contained in the facility;
+- dealings producing more than 25 litres of liquid culture of GMOs in each vessel; or
+- any other work prohibited in writing by the Regulator.""" ;
+    schema:name "PC2" ;
+    skos:altLabel "Physical Containment Level 2" ;
+    skos:inScheme appnid:cs_PhysicalContainmentLevel ;
+    skos:prefLabel "PC2 (PhysicalContainmentLevel)" .
+
+appnid:pc_PC3 a skos:Concept,
+        appn:PhysicalContainmentLevel ;
+    dcterms:description """A facility certified as a PC 3 Facility is appropriate for the conduct of the dealings listed below:
+
+- dealings with GM micro-organisms;
+- laboratory procedures involving small terrestrial animals and invertebrates, if not otherwise prohibited by licence conditions;
+- laboratory procedures involving aquatic organisms (including amphibians), subject to additional conditions and if not otherwise prohibited by licence conditions.
+
+A PC 3 Facility is not appropriate for the following:
+
+- dealings with any GMO that, under the gene technology legislation or conditions of a licence, require containment in a physical containment level higher than PC3;
+- dealings involving a micro-organism that satisfies the criteria in AS/NZS 2243.3 for classification as Risk Group 4;
+- the housing/keeping/rearing of any plants, animals, including invertebrates and aquatic organisms, beyond the minimum time that they are required for conducting the dealings with GMOs; or
+- any other work prohibited by notification in writing by the Regulator.""" ;
+    dcterms:title "PC3" ;
+    schema:description """A facility certified as a PC 3 Facility is appropriate for the conduct of the dealings listed below:
+
+- dealings with GM micro-organisms;
+- laboratory procedures involving small terrestrial animals and invertebrates, if not otherwise prohibited by licence conditions;
+- laboratory procedures involving aquatic organisms (including amphibians), subject to additional conditions and if not otherwise prohibited by licence conditions.
+
+A PC 3 Facility is not appropriate for the following:
+
+- dealings with any GMO that, under the gene technology legislation or conditions of a licence, require containment in a physical containment level higher than PC3;
+- dealings involving a micro-organism that satisfies the criteria in AS/NZS 2243.3 for classification as Risk Group 4;
+- the housing/keeping/rearing of any plants, animals, including invertebrates and aquatic organisms, beyond the minimum time that they are required for conducting the dealings with GMOs; or
+- any other work prohibited by notification in writing by the Regulator.""" ;
+    schema:name "PC3" ;
+    skos:altLabel "Physical Containment Level 3" ;
+    skos:inScheme appnid:cs_PhysicalContainmentLevel ;
+    skos:prefLabel "PC3 (PhysicalContainmentLevel)" .
+
+appnid:pc_PC4 a skos:Concept,
+        appn:PhysicalContainmentLevel ;
+    dcterms:description """A facility certified as a PC 4 Facility is appropriate for the conduct of dealings that are authorised by a licence requiring this level of containment This generally involves organisms classified as Risk group 4, or Risk group 3 (RG3) organisms which have been modified and as a result are more harmful than the RG3 parent organism. Dealings permitted to be conducted
+within the facility are therefore the result of an extensive risk assessment of proposed projects and the mandatory implementation of a risk management plan through licence conditions.
+
+The Guidelines contains the requirement for certification of a PC 4 Facility to be certified, and the conditions a facility must continue to comply for the facility to remain certified. Given the type of dealings conducted within the facility and the characteristics of the facility, bespoke requirements and conditions are likely to be included in the certification instrument.""" ;
+    dcterms:title "PC4" ;
+    schema:description """A facility certified as a PC 4 Facility is appropriate for the conduct of dealings that are authorised by a licence requiring this level of containment This generally involves organisms classified as Risk group 4, or Risk group 3 (RG3) organisms which have been modified and as a result are more harmful than the RG3 parent organism. Dealings permitted to be conducted
+within the facility are therefore the result of an extensive risk assessment of proposed projects and the mandatory implementation of a risk management plan through licence conditions.
+
+The Guidelines contains the requirement for certification of a PC 4 Facility to be certified, and the conditions a facility must continue to comply for the facility to remain certified. Given the type of dealings conducted within the facility and the characteristics of the facility, bespoke requirements and conditions are likely to be included in the certification instrument.""" ;
+    schema:name "PC4" ;
+    skos:altLabel "Physical Containment Level 4" ;
+    skos:inScheme appnid:cs_PhysicalContainmentLevel ;
+    skos:prefLabel "PC4 (PhysicalContainmentLevel)" .
+
+appnid:pt_CTScanner a skos:Concept,
+        appn:PlatformType ;
+    dcterms:description "An image acquisition device that generates a three-dimensional image of the inside of an object from a large series of two-dimensional X-ray images taken around a single axis of rotation." ;
+    dcterms:title "CT scanner" ;
+    schema:description "An image acquisition device that generates a three-dimensional image of the inside of an object from a large series of two-dimensional X-ray images taken around a single axis of rotation." ;
+    schema:name "CT scanner" ;
+    schema:url <http://purl.obolibrary.org/obo/OBI_0000982> ;
+    skos:altLabel "computed tomography scanner" ;
+    skos:inScheme appnid:cs_PlatformType ;
+    skos:prefLabel "CT scanner (PlatformType)" .
+
+appnid:pt_GravimetricPlantPhenotyping a skos:Concept,
+        appn:PlatformType ;
+    dcterms:description "A plant phenotyping platform consisting of weighing scales and automated irrigation units that monitors plant–pot weight and uses weight loss to determine transpiration and control irrigation." ;
+    dcterms:title "gravimetric plant phenotyping" ;
+    schema:description "A plant phenotyping platform consisting of weighing scales and automated irrigation units that monitors plant–pot weight and uses weight loss to determine transpiration and control irrigation." ;
+    schema:name "gravimetric plant phenotyping" ;
+    schema:url <https://doi.org/10.1002/ppj2.20078> ;
+    skos:altLabel "gravimetric" ;
+    skos:inScheme appnid:cs_PlatformType ;
+    skos:prefLabel "gravimetric plant phenotyping (PlatformType)" .
+
+appnid:pt_UAV a skos:Concept,
+        appn:PlatformType ;
+    dcterms:description "Unmanned aerial vehicle (UAV) is an unmanned aircraft that can be remotely controlled or operate autonomously through embedded software and onboard sensors. It encompasses both rotor types, such as quadcopters and fixed-wing designs, including hybrid vertical takeoff and landing (VTOL) drones." ;
+    dcterms:title "UAV" ;
+    schema:description "Unmanned aerial vehicle (UAV) is an unmanned aircraft that can be remotely controlled or operate autonomously through embedded software and onboard sensors. It encompasses both rotor types, such as quadcopters and fixed-wing designs, including hybrid vertical takeoff and landing (VTOL) drones." ;
+    schema:name "UAV" ;
+    schema:url <https://doi.org/10.1016/B978-0-12-817748-8.00050-X> ;
+    skos:altLabel "sUAS" ;
+    skos:inScheme appnid:cs_PlatformType ;
+    skos:prefLabel "UAV (PlatformType)" .
+
+appnid:scale_Centimeter a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "A length unit which is equal to one hundredth of a meter or 10^[-2] m." ;
+    dcterms:title "centimeter" ;
+    schema:description "A length unit which is equal to one hundredth of a meter or 10^[-2] m." ;
+    schema:name "centimeter" ;
+    skos:altLabel "cm" ;
+    skos:exactMatch <http://qudt.org/vocab/unit/CentiM> ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "centimeter (Scale)" .
+
+appnid:scale_CubicMillimeter a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "A measure of volume in the metric system. One thousand ccs equal one liter." ;
+    dcterms:title "cubic millimeter" ;
+    schema:description "A measure of volume in the metric system. One thousand ccs equal one liter." ;
+    schema:name "cubic millimeter" ;
+    skos:altLabel "mm3" ;
+    skos:exactMatch <http://qudt.org/vocab/unit/MilliM3> ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "cubic millimeter (Scale)" .
+
+appnid:scale_Day a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "A time unit which is equal to 24 hours." ;
+    dcterms:title "day" ;
+    schema:description "A time unit which is equal to 24 hours." ;
+    schema:name "day" ;
+    skos:exactMatch <http://qudt.org/vocab/unit/DAY> ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "day (Scale)" .
+
+appnid:scale_Gram a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "A mass unit which is equal to one thousandth of a kilogram or 10^[-3] kg." ;
+    dcterms:title "gram" ;
+    schema:description "A mass unit which is equal to one thousandth of a kilogram or 10^[-3] kg." ;
+    schema:name "gram" ;
+    skos:altLabel "g" ;
+    skos:exactMatch <http://qudt.org/vocab/unit/GM> ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "gram (Scale)" .
+
+appnid:scale_GramPerGram a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "A unit which is equal to 1 gram per 1 gram." ;
+    dcterms:title "gram per gram" ;
+    schema:description "A unit which is equal to 1 gram per 1 gram." ;
+    schema:name "gram per gram" ;
+    skos:altLabel "g/g" ;
+    skos:exactMatch <http://qudt.org/vocab/unit/KiloGM-PER-KiloGM> ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "gram per gram (Scale)" .
+
+appnid:scale_HounsfieldUnits a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "Term given to the dimensions of the quantifier of x-ray attenuation, CT number." ;
+    dcterms:title "hounsfield units" ;
+    schema:description "Term given to the dimensions of the quantifier of x-ray attenuation, CT number." ;
+    schema:name "hounsfield units" ;
+    skos:altLabel "hu" ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/NCIT_C94908> ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "hounsfield units (Scale)" .
+
+appnid:scale_Integer a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "An integer is the number zero (0), a positive natural number (1, 2, 3, etc.) or a negative integer (−1, −2, −3, etc.)." ;
+    dcterms:title "integer" ;
+    schema:description "An integer is the number zero (0), a positive natural number (1, 2, 3, etc.) or a negative integer (−1, −2, −3, etc.)." ;
+    schema:name "integer" ;
+    skos:exactMatch <http://qudt.org/vocab/unit/COUNT> ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "integer (Scale)" .
+
+appnid:scale_Kilopixels a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "A thousand pixels quotations." ;
+    dcterms:title "kilopixels" ;
+    schema:description "A thousand pixels quotations." ;
+    schema:name "kilopixels" ;
+    skos:altLabel "kpixels" ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "kilopixels (Scale)" .
+
+appnid:scale_KilopixelsPerDay a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "A thousand pixels quotations per day." ;
+    dcterms:title "kilopixels per day" ;
+    schema:description "A thousand pixels quotations per day." ;
+    schema:name "kilopixels per day" ;
+    skos:altLabel "kpixels/day" ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "kilopixels per day (Scale)" .
+
+appnid:scale_KilopixelsPerMilliliter a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "A thousand pixels quotations per milliliter." ;
+    dcterms:title "kilopixels per milliliter" ;
+    schema:description "A thousand pixels quotations per milliliter." ;
+    schema:name "kilopixels per milliliter" ;
+    skos:altLabel "kpixels/ml" ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "kilopixels per milliliter (Scale)" .
+
+appnid:scale_Milliliter a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "A volume unit which is equal to one thousandth of a liter or 10^[-3] L, or to 1 cubic centimeter." ;
+    dcterms:title "milliliter" ;
+    schema:description "A volume unit which is equal to one thousandth of a liter or 10^[-3] L, or to 1 cubic centimeter." ;
+    schema:name "milliliter" ;
+    skos:altLabel "ml" ;
+    skos:exactMatch <http://qudt.org/vocab/unit/MilliL> ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "milliliter (Scale)" .
+
+appnid:scale_MilliliterPerDay a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "The total volume in milliliters used, taken, or produced over 24 hours." ;
+    dcterms:title "milliliter per day" ;
+    schema:description "The total volume in milliliters used, taken, or produced over 24 hours." ;
+    schema:name "milliliter per day" ;
+    skos:altLabel "ml/day " ;
+    skos:exactMatch <http://qudt.org/vocab/unit/MilliM-PER-DAY> ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "milliliter per day (Scale)" .
+
+appnid:scale_Millimeter a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "A length unit which is equal to one thousandth of a meter or 10^[-3] m." ;
+    dcterms:title "millimeter" ;
+    schema:description "A length unit which is equal to one thousandth of a meter or 10^[-3] m." ;
+    schema:name "millimeter" ;
+    skos:altLabel "mm" ;
+    skos:exactMatch <http://qudt.org/vocab/unit/MilliM> ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "millimeter (Scale)" .
+
+appnid:scale_Pixel a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "A pixel (px) is the smallest addressable component of a digital image, often used as a unit of length or area in digital imaging, graphics, and web design (Wikipedia)." ;
+    dcterms:title "pixel" ;
+    schema:description "A pixel (px) is the smallest addressable component of a digital image, often used as a unit of length or area in digital imaging, graphics, and web design (Wikipedia)." ;
+    schema:name "pixel" ;
+    skos:exactMatch <http://qudt.org/vocab/unit/PIXEL> ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "pixel (Scale)" .
+
+appnid:scale_Ratio a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "A dimensionless ratio unit which, given a pair of quantities a and b, for which b is a multiple of a, denotes b by giving the multiplier (coefficient) c for a to result in b." ;
+    dcterms:title "ratio" ;
+    schema:description "A dimensionless ratio unit which, given a pair of quantities a and b, for which b is a multiple of a, denotes b by giving the multiplier (coefficient) c for a to result in b." ;
+    schema:name "ratio" ;
+    skos:exactMatch <http://qudt.org/vocab/unit/ONE-PER-ONE> ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "ratio (Scale)" .
+
+appnid:scale_SquareMillimeter a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "An area unit which is equal to one millionth of a square meter or 10^[-6] m^[2]." ;
+    dcterms:title "square millimeter" ;
+    schema:description "An area unit which is equal to one millionth of a square meter or 10^[-6] m^[2]." ;
+    schema:name "square millimeter" ;
+    skos:altLabel "mm2" ;
+    skos:exactMatch <http://qudt.org/vocab/unit/MilliM2> ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "square millimeter (Scale)" .
+
+appnid:scale_Voxel a schema:DefinedTerm,
+        skos:Concept,
+        appn:Scale ;
+    dcterms:description "The smallest distinguishable 'rectangular-parallel-piped-shaped' part of a three-dimensional space or image." ;
+    dcterms:title "voxel" ;
+    schema:description "The smallest distinguishable 'rectangular-parallel-piped-shaped' part of a three-dimensional space or image." ;
+    schema:name "voxel" ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/NCIT_C79424> ;
+    skos:inScheme appnid:cs_Scale ;
+    skos:prefLabel "voxel (Scale)" .
+
+appnid:st_Hyperspectral a skos:Concept,
+        appn:SensorType ;
+    dcterms:description "A digital imaging device that captures images in a large number of contiguous, narrow spectral bands across a continuous spectral range." ;
+    dcterms:title "hyperspectral" ;
+    schema:description "A digital imaging device that captures images in a large number of contiguous, narrow spectral bands across a continuous spectral range." ;
+    schema:name "hyperspectral" ;
+    skos:inScheme appnid:cs_SensorType ;
+    skos:prefLabel "hyperspectral (SensorType)" .
+
+appnid:st_LiDAR a skos:Concept,
+        appn:SensorType ;
+    dcterms:description "An active remote sensing device that emits laser pulses and measures the reflected light to determine distances and generate three-dimensional spatial information." ;
+    dcterms:title "LiDAR" ;
+    schema:description "An active remote sensing device that emits laser pulses and measures the reflected light to determine distances and generate three-dimensional spatial information." ;
+    schema:name "LiDAR" ;
+    skos:inScheme appnid:cs_SensorType ;
+    skos:prefLabel "LiDAR (SensorType)" .
+
+appnid:st_LoadCell a skos:Concept,
+        appn:SensorType ;
+    dcterms:description "A transducer sensor that converts an applied force into a proportional electrical signal." ;
+    dcterms:title "load cell" ;
+    schema:description "A transducer sensor that converts an applied force into a proportional electrical signal." ;
+    schema:name "load cell" ;
+    skos:inScheme appnid:cs_SensorType ;
+    skos:prefLabel "load cell (SensorType)" .
+
+appnid:st_Multispectral a skos:Concept,
+        appn:SensorType ;
+    dcterms:description "A digital imaging device that captures images in multiple discrete spectral bands spanning visible and/or non-visible wavelengths." ;
+    dcterms:title "multispectral" ;
+    schema:description "A digital imaging device that captures images in multiple discrete spectral bands spanning visible and/or non-visible wavelengths." ;
+    schema:name "multispectral" ;
+    skos:inScheme appnid:cs_SensorType ;
+    skos:prefLabel "multispectral (SensorType)" .
+
+appnid:st_RGB a skos:Concept,
+        appn:SensorType ;
+    dcterms:description "A digital imaging device that captures visible light in three broad spectral bands corresponding to red, green, and blue (RGB) colour channels." ;
+    dcterms:title "RGB" ;
+    schema:description "A digital imaging device that captures visible light in three broad spectral bands corresponding to red, green, and blue (RGB) colour channels." ;
+    schema:name "RGB" ;
+    skos:inScheme appnid:cs_SensorType ;
+    skos:prefLabel "RGB (SensorType)" .
+
+appnid:st_RadiationStableXRay a skos:Concept,
+        appn:SensorType ;
+    dcterms:description "An X-ray detector designed to resist radiation-induced degradation and maintain consistent imaging performance during prolonged exposure to X-ray radiation." ;
+    dcterms:title "radiation stable X-ray" ;
+    schema:description "An X-ray detector designed to resist radiation-induced degradation and maintain consistent imaging performance during prolonged exposure to X-ray radiation." ;
+    schema:name "radiation stable X-ray" ;
+    skos:inScheme appnid:cs_SensorType ;
+    skos:prefLabel "radiation stable X-ray (SensorType)" .
+
+appnid:cs_BiocontainmentLevel a skos:ConceptScheme ;
+    dcterms:description "Concept scheme including instances of the BiocontainmentLevel class from the Australian Plant Phenomics Network" ;
+    dcterms:title "BiocontainmentLevel" ;
+    schema:description "Concept scheme including instances of the BiocontainmentLevel class from the Australian Plant Phenomics Network" ;
+    schema:name "BiocontainmentLevel" .
+
+appnid:bm_Grain a skos:Concept,
+        appn:BiologicalMaterial ;
+    dcterms:description "Poaceae, also called Gramineae, is a large and nearly ubiquitous family of monocotyledonous flowering plants commonly known as true grasses." ;
+    dcterms:title "grain" ;
+    schema:description "Poaceae, also called Gramineae, is a large and nearly ubiquitous family of monocotyledonous flowering plants commonly known as true grasses." ;
+    schema:name "grain" ;
+    skos:broader appnid:bm_AnyPlant ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/NCBITaxon_4479>,
+        <https://en.wikipedia.org/wiki/Poaceae> ;
+    skos:inScheme appnid:cs_BiologicalMaterial ;
+    skos:prefLabel "grain (BiologicalMaterial)" ;
+    appn:scientificName "Poaceae" .
+
+appnid:bm_AnyPlant a skos:Concept,
+        appn:BiologicalMaterial ;
+    dcterms:description "Plants are the eukaryotic organisms that constitute the kingdom Plantae." ;
+    dcterms:title "any plant" ;
+    schema:description "Plants are the eukaryotic organisms that constitute the kingdom Plantae." ;
+    schema:name "any plant" ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/NCBITaxon_33090>,
+        <https://en.wikipedia.org/wiki/Plantae> ;
+    skos:inScheme appnid:cs_BiologicalMaterial ;
+    skos:prefLabel "any plant (BiologicalMaterial)" ;
+    appn:scientificName "Plantae" .
+
+appnid:cs_PlatformType a skos:ConceptScheme ;
+    dcterms:description "Concept scheme including instances of the PlatformType class from the Australian Plant Phenomics Network" ;
+    dcterms:title "PlatformType" ;
+    schema:description "Concept scheme including instances of the PlatformType class from the Australian Plant Phenomics Network" ;
+    schema:name "PlatformType" .
+
+appnid:cs_PhysicalContainmentLevel a skos:ConceptScheme ;
+    dcterms:description "Concept scheme including instances of the PhysicalContainmentLevel class from the Australian Plant Phenomics Network" ;
+    dcterms:title "PhysicalContainmentLevel" ;
+    schema:description "Concept scheme including instances of the PhysicalContainmentLevel class from the Australian Plant Phenomics Network" ;
+    schema:name "PhysicalContainmentLevel" .
+
+appnid:cs_BiologicalMaterial a skos:ConceptScheme ;
+    dcterms:description "Concept scheme including instances of the BiologicalMaterial class from the Australian Plant Phenomics Network" ;
+    dcterms:title "BiologicalMaterial" ;
+    schema:description "Concept scheme including instances of the BiologicalMaterial class from the Australian Plant Phenomics Network" ;
+    schema:name "BiologicalMaterial" .
+
+appnid:cs_SensorType a skos:ConceptScheme ;
+    dcterms:description "Concept scheme including instances of the SensorType class from the Australian Plant Phenomics Network" ;
+    dcterms:title "SensorType" ;
+    schema:description "Concept scheme including instances of the SensorType class from the Australian Plant Phenomics Network" ;
+    schema:name "SensorType" .
+
+appnid:cs_GrowthFacilityType a skos:ConceptScheme ;
+    dcterms:description "Concept scheme including instances of the GrowthFacilityType class from the Australian Plant Phenomics Network" ;
+    dcterms:title "GrowthFacilityType" ;
+    schema:description "Concept scheme including instances of the GrowthFacilityType class from the Australian Plant Phenomics Network" ;
+    schema:name "GrowthFacilityType" .
+
+appnid:cs_BiologicalUnitType a skos:ConceptScheme ;
+    dcterms:description "Concept scheme including instances of the BiologicalUnitType class from the Australian Plant Phenomics Network" ;
+    dcterms:title "BiologicalUnitType" ;
+    schema:description "Concept scheme including instances of the BiologicalUnitType class from the Australian Plant Phenomics Network" ;
+    schema:name "BiologicalUnitType" .
+
+appnid:cs_Scale a skos:ConceptScheme ;
+    dcterms:description "Concept scheme including instances of the Scale class from the Australian Plant Phenomics Network" ;
+    dcterms:title "Scale" ;
+    schema:description "Concept scheme including instances of the Scale class from the Australian Plant Phenomics Network" ;
+    schema:name "Scale" .

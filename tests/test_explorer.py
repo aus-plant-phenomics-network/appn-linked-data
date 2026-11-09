@@ -14,6 +14,10 @@ from appn_linked_data import (
     UQ_VOCABULARY,
 )
 
+# These tests run explorer.py in a separate process, so they belong in the
+# integration stage (pyproject.toml: "crosses a real boundary").
+pytestmark = pytest.mark.integration
+
 ExplorerTest = namedtuple("ExplorerTest", ["name", "args", "expected", "not_expected"])
 """Simple class to manage a test of explorer.py.
 

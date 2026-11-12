@@ -1,0 +1,10 @@
+@prefix usyd: <https://id.plantphenomics.org.au/USYD/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix schema: <http://schema.org/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+usyd:cs_GrowthFacilityType a skos:ConceptScheme ;
+    dcterms:description "Concept scheme including instances of the GrowthFacilityType class from the University of Sydney node of the Australian Plant Phenomics Network" ;
+    dcterms:title "GrowthFacilityType" ;
+    schema:description "Concept scheme including instances of the GrowthFacilityType class from the University of Sydney node of the Australian Plant Phenomics Network" ;
+    schema:name "GrowthFacilityType" .

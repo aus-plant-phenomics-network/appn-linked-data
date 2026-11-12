@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from appn_linked_data.configuration import (
+from appn_linked_data.ld_constants import (
     ANU_VOCABULARY,
     APPN_SCHEMA,
     APPN_VOCABULARY,
@@ -29,24 +29,26 @@ from appn_linked_data.configuration import (
     UWA_VOCABULARY,
     WSU_VOCABULARY,
     XML_SCHEMA,
-    Configuration,
-    ExplicitTermsFilter,
-    OrganisationProperty,
-    ValidationType,
 )
-from appn_linked_data.logger import (
-    IssueLogger,
-    IssueMessage,
+from appn_linked_data.ld_dictionary import (
+    Dictionary,
 )
-from appn_linked_data.types import (
+from appn_linked_data.ld_iri import (
     IRI,
-    CompletionRuleProperty,
-    CompletionRuleType,
-    Issue,
-    NamespaceDefinition,
-    Organisation,
     Triple,
     TriplePosition,
+)
+from appn_linked_data.ld_namespaces import (
+    AssetLoadLocation,
+    NamespaceDefinition,
+    NamespaceDefinitionManager,
+)
+from appn_linked_data.ld_settings import (
+    CompletionRule,
+    ExplicitTermsFilter,
+    LinkedDataSettings,
+    Organisation,
+    ReflexiveCompletionRule,
 )
 
 __all__ = [
@@ -77,17 +79,17 @@ __all__ = [
     "UWA_VOCABULARY",
     "WSU_VOCABULARY",
     "XML_SCHEMA",
-    "CompletionRuleProperty",
-    "CompletionRuleType",
-    "Configuration",
+    "AssetLoadLocation",
+    "CompletionRule",
+    "Dictionary",
     "ExplicitTermsFilter",
     "Issue",
+    "LinkedDataSettings",
     "NamespaceDefinition",
+    "NamespaceDefinitionManager",
     "Organisation",
-    "OrganisationProperty",
     "Triple",
     "TriplePosition",
-    "ValidationType",
 ]
 
 __version__ = "0.1.0"

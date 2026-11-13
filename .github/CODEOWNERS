@@ -1,0 +1,16 @@
+# Routes review requests automatically (§3.4). Combined with branch protection's
+# "Require review from Code Owners", this is how the two-reviewer rule on
+# sensitive paths is enforced rather than remembered.
+#
+# Later matches win, so put the broad rule first.
+
+*                       @APPN/engineering
+
+# Two owners = two required approvals on the paths that need them.
+/src/identifiers/       @APPN/engineering @APPN/tech-leads
+/src/auth/              @APPN/engineering @APPN/tech-leads
+/migrations/            @APPN/engineering @APPN/data-engineering
+/infrastructure/        @APPN/platform
+/warehouse/models/      @APPN/data-engineering
+/.github/workflows/     @APPN/platform
+/SECURITY.md            @APPN/tech-leads

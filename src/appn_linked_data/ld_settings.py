@@ -29,7 +29,7 @@ from appn_linked_data.ld_namespaces import (
     NamespaceDefinitionManager,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("__main__")
 
 # Name of file containing settings
 LINKED_DATA_SETTINGS_FILE = "linked-data-settings.yaml"

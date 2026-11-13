@@ -29,7 +29,7 @@ from appn_linked_data.ld_namespaces import (
     NamespaceDefinitionManager,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("__main__")
 
 
 ### IRI #######################################################################

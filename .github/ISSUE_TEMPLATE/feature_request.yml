@@ -1,0 +1,44 @@
+name: Feature request
+description: Propose new behaviour or a change to existing behaviour
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the problem, not the solution you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: What should the system do instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Including doing nothing — say why that is not enough.
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Does this change a public interface?
+      description: APIs, CLI flags, config keys, database schema, identifier formats.
+      options:
+        - "No"
+        - "Yes — backwards compatible"
+        - "Yes — breaking change"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: adr
+    attributes:
+      label: Decision record
+      options:
+        - label: This is a one-way door and needs an ADR in docs/decisions/ (§3.5)

@@ -1,0 +1,37 @@
+# EditorConfig — https://editorconfig.org
+# Encoding, line endings and indentation for every editor (§3.13).
+# The language formatter is still the authority; this stops editors fighting it.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+max_line_length = 88
+
+[*.{yml,yaml,json,jsonc,toml}]
+indent_size = 2
+
+[*.{js,jsx,ts,tsx,css,scss,html,md}]
+indent_size = 2
+max_line_length = 100
+
+[*.{sh,bash}]
+indent_size = 4
+
+[*.{sql}]
+indent_size = 4
+
+[*.{R,r,Rmd}]
+indent_size = 2
+max_line_length = 80
+
+[Makefile]
+indent_style = tab
+
+[*.md]
+# Two trailing spaces are a hard line break in Markdown.
+trim_trailing_whitespace = false

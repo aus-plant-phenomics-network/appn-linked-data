@@ -19,7 +19,7 @@ from pydantic import (
 from appn_linked_data import settings
 from appn_linked_data.ld_constants import APPN_SCHEMA
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("__main__")
 
 
 # Name of file containing settings
@@ -140,7 +140,7 @@ class NamespaceDefinitionManager:
                 namespace_definition.prefix
                 == self._namespace_dictionary[namespace_definition.namespace].prefix
             ):
-                logger.info(
+                logger.debug(
                     "Changing location for namespace definition for <%s> from %s to %s",
                     namespace_definition.namespace,
                     self._namespace_dictionary[namespace_definition.namespace],

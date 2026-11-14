@@ -34,5 +34,5 @@ jobs:
       - name: Install
         run: make install
 
-      - name: Lint
+      - name: Build
         run: python src/appn_linked_data/vocabulariser.py

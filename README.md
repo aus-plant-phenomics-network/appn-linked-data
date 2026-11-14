@@ -32,18 +32,27 @@ make install
 * **IRI**: Class to represent an IRI/URI and offer quick access to parts and to CURIE representations, subclass of `rdflib.URIRef` and serves as a pydantic model.
 * **LinkedDataSettings**: Singleton to supply configuration options for all other components - relies on `NamespaceDefinitionManager` and `IRI`.
 * **Dictionary**: Class for loading sets of linked data assets (schemas, vocabularies and metadata) into an `rdflib.Graph` and providing helper functions for common queries.
+* **DictParser**: Class for converting Python dictionaries or `pandas` `Series` into triples in an `rdflib.Graph`.
+* **IssueHandler**: Class for collecting user-focused log messages for use in reports.
+* **ExcelVocabularyParser**: Command-line interface (as `vocabulariser.py`) to generate a linked data vocabularies from Excel spreadsheets in `src/vocabulary_templates/`.
 * **Explorer**: Command-line interface to explore a `Dictionary` instance.
+
+Generate new copies of linked data vocabularies for APPN and for APPN nodes:
+
+```bash
+python vocabulariser.py
+```
 
 Explore the APPN schema and referenced schemas:
 
 ```bash
-python appn_explorer.py
+python explorer.py
 ```
 
 Explore the APPN schema, referenced schemas and the APPN and Adelaide University vocabularies:
 
 ```bash
-python appn_explorer.py -a APPN -a AU
+python explorer.py -a APPN -a AU
 ```
 
 ## Configure

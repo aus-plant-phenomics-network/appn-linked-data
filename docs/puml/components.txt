@@ -1,24 +1,52 @@
 @startuml
 
 component Explorer [
-Explorer (ld_dictionary.py)
+Explorer
+(explorer.py)
 ----
 Command line tool
 
-Performs queries against
-a Dictionary.
+Shows content from a
+Dictionary.
 ]
 
+component IssueHandler [
+IssueHandler
+(ld_issue.py)
+----
+Collects issues relevant to
+user.
+]
+
+component ExcelVocabularyParser [
+ExcelVocabularyParser
+(vocabulariser.py)
+----
+Command line tool
+
+Generates vocabulary from
+a spreadsheet
+]
+
+component DictParser [
+DictParser
+(ld_parser.py)
+----
+Generates linked data
+from dictionaries.
+]
 
 component Dictionary [
-Dictionary (ld_dictionary.py)
+Dictionary
+(ld_dictionary.py)
 ----
 Loads and exposes
 linked-data assets.
 ]
 
 component LinkedDataSettings [
-LinkedDataSettings (ld_settings.py)
+LinkedDataSettings
+(ld_settings.py)
 ----
 Singleton class
 
@@ -27,7 +55,8 @@ modules in appn_linked_data.
 ]
 
 component NamespaceDefinitionManager [
-NamespaceDefinitionManager (ld_namespaces.py)
+NamespaceDefinitionManager
+(ld_namespaces.py)
 ----
 Singleton class
 
@@ -36,7 +65,8 @@ and asset locations.
 ]
 
 component IRI [
-IRI (ld_iri.py)
+IRI
+(ld_iri.py)
 ----
 Represents linked-data IRIs using
 known namespaces.
@@ -57,6 +87,13 @@ collections assets [
     packaged in appn_linked_data.
 ]
 
+collections reports [
+    reports
+    ----
+    Issue reports for user
+    attention.
+]
+
 IRI --> NamespaceDefinitionManager: uses
 LinkedDataSettings --> NamespaceDefinitionManager: uses
 LinkedDataSettings --> IRI: uses
@@ -66,5 +103,9 @@ Dictionary --> IRI: uses
 Dictionary --> LinkedDataSettings: uses
 Dictionary --> assets: reads
 Explorer --> Dictionary: uses
-
+DictParser --> Dictionary: uses
+ExcelVocabularyParser --> DictParser: uses
+ExcelVocabularyParser --> assets: generates\nvocabularies
+ExcelVocabularyParser --> IssueHandler: uses
+ExcelVocabularyParser --> reports: generates
 @enduml

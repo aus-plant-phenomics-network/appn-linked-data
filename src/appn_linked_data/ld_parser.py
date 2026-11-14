@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
-"""ld_parser - Parser to generate RDF objects from dictlike objects (including `pandas` `Series`).
+"""ld_parser - Parsers to generate RDF objects from dictlike objects (including `pandas` `Series`) and Excel spreadsheets.
 
 Public access is via the `DictParser` class which handles dictionaries defining
-instances of a single schema class on behalf of a single `Organisation`.
+instances of a single schema class on behalf of a single `Organisation` and via
+the 'ExcelVocabularyParser` class which handles collections of definitions
+stored in an Excel spreadsheet.
 """
 
 from __future__ import annotations
@@ -11,15 +13,24 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime
+from enum import StrEnum
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
 from rdflib import Graph, Literal, Node, URIRef
+from rdflib.namespace import NamespaceManager
 
 from appn_linked_data.ld_constants import (
+    ALT_SCHEMA_SCHEMA,
     APPN_SCHEMA,
+    APPN_VOCABULARY,
+    BIO_SCHEMA,
     CENTRAL_ORGANISATION,
+    DC_SCHEMA,
+    SCHEMA_SCHEMA,
+    SKOS_SCHEMA,
     XML_SCHEMA,
 )
 from appn_linked_data.ld_dictionary import (
@@ -41,8 +52,10 @@ from appn_linked_data.ld_iri import (
     XML_DECIMAL,
     XML_INTEGER,
     XML_STRING,
+    Triple,
 )
 from appn_linked_data.ld_issue import ISSUE_TYPE, IssueType
+from appn_linked_data.ld_namespaces import NamespaceDefinitionManager
 from appn_linked_data.ld_settings import (
     LinkedDataSettings,
     Organisation,
@@ -790,3 +803,286 @@ class DictParser:
     def get_graph(self) -> Graph:
         """Return the `Graph` instance."""
         return self.graph
+
+
+### OutputFormat ##############################################################
+
+
+class OutputFormat(StrEnum):
+    """Simple class for vocabulary output formats."""
+
+    TURTLE = "ttl"
+    JSON = "json"
+
+
+### ExcelVocabularyParser #####################################################
+
+
+class ExcelVocabularyParser:
+    """Parser to generate RDF vocabularies from Excel spreadsheets.
+
+    This class expects spreadsheets with sheet names matching the names
+    of APPN schema classes, column names matching APPN, SKOS or DCTERMS
+    property names for the sheet class, and values that fit the
+    expectes property. There must be a "name" column in each sheet. It
+    is used to construct an IRI for a class instance. Values in any
+    columns for APPN schema properties with ranges including APPN
+    schema classes will also be mapped to IRIs.
+    """
+
+    def __init__(
+        self, organisation: Organisation, appn_vocabulary_path: Path | None = None
+    ) -> None:
+        """Initialise parser.
+
+        Load schema assets required to construct the vocabulary.
+
+        :param organisation: `Organisation` representing the node or APPN central.
+        :param appn_vocabulary_path: Override for locaiton of APPN schema (for) use when
+            regenerating all vocabularies.
+        """
+        self.organisation = organisation
+
+        # Load schemas that will be used in the processing. For any node
+        # vocabulary, include the current APPN central vocabulary so its
+        # class instances can be referenced wherever relevant.
+        self.dictionary = Dictionary()
+        self.dictionary.load(APPN_SCHEMA)
+        self.dictionary.load(SKOS_SCHEMA)
+        self.dictionary.load(DC_SCHEMA)
+        if organisation.id != CENTRAL_ORGANISATION:
+            self.dictionary.load(APPN_VOCABULARY, asset_path=appn_vocabulary_path)
+        self.dictionary.import_references()
+
+        # Create a graph to contain the new vocabulary and initialise the
+        # required namespaces.
+        self.graph = Graph()
+        namespace_manager = NamespaceManager(self.graph)
+        namespace_definitions = NamespaceDefinitionManager().get_namespace_dictionary()
+        # Make sure the correct schema.org domain is used.
+        namespace_manager.bind(
+            namespace_definitions[ALT_SCHEMA_SCHEMA].prefix, ALT_SCHEMA_SCHEMA
+        )
+        namespace_manager.bind(
+            namespace_definitions[SCHEMA_SCHEMA].prefix, SCHEMA_SCHEMA
+        )
+        # Ensure the vocabulary graph uses the preferred namespace prefixes
+        self.graph.bind(organisation.prefix, organisation.namespace, override=True)  # type: ignore[union-attr]
+        self.graph.bind(
+            namespace_definitions[APPN_SCHEMA].prefix, APPN_SCHEMA, override=True
+        )
+        self.graph.bind(namespace_definitions[BIO_SCHEMA].prefix, BIO_SCHEMA)
+        if organisation.id != CENTRAL_ORGANISATION:
+            appn = LinkedDataSettings().get_appn()
+            self.graph.bind(appn.prefix, appn.namespace)
+
+        # Convenience dictionary for checking class names.
+        self.appn_classes_by_name = {
+            c.name: c for c in self.dictionary.list_classes(namespace=APPN_SCHEMA)
+        }
+
+    def parse(self, excel_path: Path) -> None:
+        """Read Excel spreadsheet and parse all instances.
+
+        Read the sheet with `pandas`, but load the column headings as the first
+        row and normalise column names. This allows a column name to be repeated.
+        Each use of the same column name gets a unique name based on a trailing
+        decimal integer. Once the unique column names are assigned, drop the first
+        row,
+
+        Construct a `DictParser` for each sheet and parse all rows.
+
+        :param excel_path: Path to Excel file.
+        """
+        try:
+            for sheet in pd.ExcelFile(excel_path).sheet_names:
+                # Process any sheet with a name matching an APPN schema class name OR
+                # mapped to a class name using `sheet_aliases`
+                sheet_class = LinkedDataSettings().get_sheet_aliases().get(sheet, sheet)  # type: ignore[arg-type]
+                if sheet_class in self.appn_classes_by_name:
+                    appn_class = self.appn_classes_by_name[sheet_class]
+
+                    parser = DictParser(
+                        self.dictionary,
+                        appn_class,
+                        self.organisation,  # type: ignore[arg-type]
+                        graph=self.graph,
+                        generate_concepts=True,
+                    )
+
+                    try:
+                        excel_sheet_dataframe = pd.read_excel(
+                            excel_path, sheet_name=sheet, header=None, dtype="str"
+                        )
+                    except Exception:
+                        logger.exception(
+                            "Excel sheet %s in %s unreadable",
+                            sheet,
+                            excel_path,
+                            extra={ISSUE_TYPE: IssueType.EXCEL_SHEET_ERROR},
+                        )
+                        break
+
+                    column_name_matches: dict[str, int] = {}
+                    columns: list[str] = []
+                    for heading in excel_sheet_dataframe.loc[0, :].array:
+                        column_name = TRAILING_INTEGER_PATTERN.sub("", heading.strip())
+                        if column_name not in column_name_matches:
+                            column_name_matches[column_name] = 0
+                        else:
+                            column_name_matches[column_name] = (
+                                column_name_matches[column_name] + 1
+                            )
+                            column_name = (
+                                f"{column_name}{column_name_matches[column_name]}"
+                            )
+                        columns.append(column_name)
+                    excel_sheet_dataframe.columns = columns
+                    excel_sheet_dataframe = excel_sheet_dataframe.drop(0).dropna(
+                        how="all"
+                    )
+
+                    for _, row in excel_sheet_dataframe.iterrows():
+                        parser.parse(row)
+
+        except Exception:
+            logger.exception(
+                "Error parsing Excel spreadsheet",
+                extra={ISSUE_TYPE: IssueType.EXCEL_SHEET_ERROR},
+            )
+
+    def verify_referenced_objects(self) -> bool:
+        """Check that all objects referenced in this namespace have been defined.
+
+        Compare objects of triples with subjects.
+
+        :return: True if all objects have been defined.
+        """
+        latest_version = Dictionary(self.graph)
+
+        subjects = latest_version.list_unique_subjects(
+            namespace=self.organisation.namespace
+        )
+        objects = latest_version.list_unique_objects(
+            namespace=self.organisation.namespace
+        )
+
+        missing = [o for o in objects if o not in subjects]
+        for iri in missing:
+            logger.error(
+                "The vocabulary references an undefined instance %s",
+                iri.curie,
+                extra={ISSUE_TYPE: IssueType.MISSING_REFERENCE},
+            )
+
+        return len(missing) == 0
+
+    def verify_existing_terms(self, add_missing_terms: bool = True) -> bool:
+        """Ensure backwards compatibility for vocabulary.
+
+        All instances defined in the previous version of the
+        vocabulary should be retained, and all instances should
+        still belong to previously defined types.
+
+        Warn the user of issues, and optionally make necessary corrections.
+
+        :param add_missing_terms: If true, add triples to the graph as necessary.
+        :return: True if the vocabulary satisfied all checks before any additions were made.
+        """
+        all_present = True
+
+        published_version = Dictionary()
+        published_version.load(self.organisation.namespace)  # type: ignore[arg-type]
+
+        latest_version = Dictionary(self.graph)
+
+        published_instances = published_version.list_unique_subjects()
+        published_type_dictionary = self.get_types_for_instances(published_version)
+
+        latest_instances = latest_version.list_unique_subjects()
+        latest_type_dictionary = self.get_types_for_instances(latest_version)
+
+        for instance in published_instances:
+            if instance not in latest_instances:
+                all_present = False
+                logger.warning(
+                    "Published version of vocabulary includes a term %s - adding to the new version",
+                    instance.curie,
+                    extra={ISSUE_TYPE: IssueType.MISSING_INSTANCE},
+                )
+                if add_missing_terms:
+                    for triple in published_version.list_triples_for_subject(instance):
+                        latest_version.add_triple(triple)
+            else:
+                missing_types: list[IRI] = sorted(
+                    published_type
+                    for published_type in published_type_dictionary[instance]
+                    if published_type not in latest_type_dictionary[instance]
+                )
+                # Ignore cases where the previously reported class is a superclass for one of the
+                # reported classes
+                reportable_types: list[IRI] = []
+                for missing_type in missing_types:
+                    subclasses = latest_version.list_subclasses(missing_type)
+                    if not any(
+                        subclass in latest_type_dictionary[instance]
+                        for subclass in subclasses
+                    ):
+                        reportable_types.append(missing_type)
+                if len(reportable_types) > 0:
+                    all_present = False
+                    logger.warning(
+                        "Published term %s has missing types: %s - adding these to the new version",
+                        instance.curie,
+                        ", ".join(
+                            [
+                                reportable_type.curie
+                                for reportable_type in reportable_types
+                            ]
+                        ),
+                        extra={ISSUE_TYPE: IssueType.MISSING_INSTANCE_TYPE},
+                    )
+                    if add_missing_terms:
+                        for missing_type in missing_types:
+                            latest_version.add_triple(
+                                Triple(instance, RDF_TYPE, missing_type)
+                            )
+
+        return all_present
+
+    def get_types_for_instances(self, dictionary: Dictionary) -> dict[IRI, list[IRI]]:
+        """Get list of explicit types for all instances in a `Dictionary`.
+
+        Query Dictionary for the subject and object of all `rdf:type` properties
+        and organise these as a dictionary keyed by instance IRI and with lists
+        of type IRIs as values.
+
+        :param dictionary: The `Dictionary` to be queried.
+        :return: Instance types organised by instance IRI.
+        """
+        instance_type_dictionary: dict[IRI, list[IRI]] = {}
+        instance_types = dictionary.query("SELECT ?x ?y WHERE { ?x rdf:type ?y }")
+        for instance_iri, instance_type in instance_types:
+            if instance_iri not in instance_type_dictionary:
+                instance_type_dictionary[instance_iri] = []  # type: ignore[index]
+            instance_type_dictionary[instance_iri].append(instance_type)  # type: ignore[index, arg-type]
+        return instance_type_dictionary
+
+    def validate(self) -> bool:
+        """Perform final validation steps for vocabulary.
+
+        Reports whether issues were detected, even if the issues were fixed.
+
+        :return: True no issues were detected.
+        """
+        return self.verify_existing_terms() and self.verify_referenced_objects()
+
+    def serialize(self, vocabulary_path: Path) -> bool:
+        """Write the vocabulary to a file.
+
+        :param vocabulary_path: Path for output file.
+        :param format: Specifies linked data output format, with Turtle as default.
+        :return: True if successful.
+        """
+        self.graph.serialize(destination=vocabulary_path)
+        return True

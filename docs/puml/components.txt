@@ -1,6 +1,6 @@
 @startuml
 
-component Explorer [
+component Explorer #ddddff [
 Explorer
 (explorer.py)
 ----
@@ -10,7 +10,7 @@ Shows content from a
 Dictionary.
 ]
 
-component IssueHandler [
+component IssueHandler #ddffdd [
 IssueHandler
 (ld_issue.py)
 ----
@@ -18,17 +18,25 @@ Collects issues relevant to
 user.
 ]
 
-component ExcelVocabularyParser [
+component ExcelVocabularyParser #ddffdd [
 ExcelVocabularyParser
-(vocabulariser.py)
+(ld_parser.py)
 ----
-Command line tool
-
 Generates vocabulary from
 a spreadsheet
 ]
 
-component DictParser [
+component Vocabulariser #ddddff [
+Vocabulariser
+(vocabulariser.py)
+----
+Command line tool
+
+Processes Excel vocabulary
+spreadsheets
+]
+
+component DictParser #ddffdd [
 DictParser
 (ld_parser.py)
 ----
@@ -36,7 +44,7 @@ Generates linked data
 from dictionaries.
 ]
 
-component Dictionary [
+component Dictionary #ddffdd [
 Dictionary
 (ld_dictionary.py)
 ----
@@ -44,7 +52,7 @@ Loads and exposes
 linked-data assets.
 ]
 
-component LinkedDataSettings [
+component LinkedDataSettings #ddffdd [
 LinkedDataSettings
 (ld_settings.py)
 ----
@@ -54,7 +62,7 @@ Configuration options for
 modules in appn_linked_data.
 ]
 
-component NamespaceDefinitionManager [
+component NamespaceDefinitionManager #ddffdd [
 NamespaceDefinitionManager
 (ld_namespaces.py)
 ----
@@ -64,7 +72,7 @@ Manages namespaces, prefixes
 and asset locations.
 ]
 
-component IRI [
+component IRI #ddffdd [
 IRI
 (ld_iri.py)
 ----
@@ -106,6 +114,7 @@ Explorer --> Dictionary: uses
 DictParser --> Dictionary: uses
 ExcelVocabularyParser --> DictParser: uses
 ExcelVocabularyParser --> assets: generates\nvocabularies
-ExcelVocabularyParser --> IssueHandler: uses
-ExcelVocabularyParser --> reports: generates
+Vocabulariser --> IssueHandler: uses
+Vocabulariser --> reports: generates
+Vocabulariser --> ExcelVocabularyParser : uses
 @enduml

@@ -24,7 +24,7 @@ make install
 
 ## Run
 
-![Deployment model](https://github.com/aus-plant-phenomics-network/appn-linked-data/blob/explorer/docs/puml/components.png)
+![Deployment model](docs/puml/components.png)
 
 `appn_linked_data` includes the following components:
 

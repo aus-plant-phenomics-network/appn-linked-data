@@ -325,16 +325,6 @@ class ExcelVocabularyParser:
 
 
 ### process_argv ##############################################################
-#
-# Safely process sys.argv, returning a dictionary of option values.
-#
-#     -n, --node        : Node name (actually name of subfolder under source)
-#                         or "all" to process all nodes (subfolders).
-#     -m, --mode        : Output mode "json" for JSON-LD or "rdf" for xml/rdf (default)
-#     -l, --log-level   : "info" / "error" / "debug".
-#     -e,               : Display logging outputs to stderr.
-#      --echo-to-stderr
-#
 
 ARG_FORMAT = "format"
 ARG_NODE = "node"
@@ -398,6 +388,9 @@ def process_argv(argv: list[str], settings: LinkedDataSettings) -> dict[str, Any
     return args
 
 
+### wrap_text #################################################################
+
+
 def wrap_text(
     text: str, width: int, initial_indent: int, subsequent_indent: int
 ) -> str:
@@ -418,11 +411,7 @@ EXCEL_SHEET_SUFFIX = ".xlsx"
 VOCABULARY_BASENAME = "_vocabulary"
 
 ### MAIN PROGRAM ##############################################################
-#
-# Parse arguments and set up logging. Based on arguments, scan one or all
-# source folders for all Excel spreadheets and generate a JSON-LD vocabulary
-# for all schema class instances included.
-#
+
 if __name__ == "__main__":
     settings = LinkedDataSettings()
 

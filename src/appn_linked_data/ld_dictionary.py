@@ -76,7 +76,7 @@ from appn_linked_data.ld_settings import (
     LinkedDataSettings,
 )
 
-logger = logging.getLogger("__main__")
+logger = logging.getLogger(__name__)
 
 ### NAME_REPLACEMENT_PATTERN ##################################################
 

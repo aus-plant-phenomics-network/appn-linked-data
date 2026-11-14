@@ -48,11 +48,15 @@ from appn_linked_data.ld_settings import (
     Organisation,
 )
 
-logger = logging.getLogger("__main__")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Values that will be ignored in spreadsheet cells
 NULL_VALUES = [None, np.nan, ""]
+
+# Values treated as True or False when parsing strings to booleans.
+TRUE_STRINGS = ["true", "t", "yes", "y"]
+FALSE_STRINGS = ["false", "f", "no", "n"]
 
 # Regex for removing trailing integers.
 TRAILING_INTEGER_PATTERN = re.compile(r"[0-9]+$")
@@ -119,7 +123,7 @@ class PropertyHandler:
             )
             if len(range_classes) == 0:
                 range_classes = parser.dictionary.list_range_classes_for_property(
-                    target_property, namespace=APPN_SCHEMA
+                    target_property, namespace=XML_SCHEMA
                 )
             if len(range_classes) == 1:
                 self.range_class = range_classes[0]
@@ -150,11 +154,7 @@ class PropertyHandler:
                 else Literal(value)
             )
         # If the range class is for an XML type, convert the value.
-        elif (
-            self.range_class.ns == XML_SCHEMA
-            and self.range_class != XML_STRING
-            and isinstance(value, str)
-        ):
+        elif self.range_class.ns == XML_SCHEMA:
             value = self.get_xml_value(self.range_class, value)
         # If a range class is expected and the value is a string, either map the
         # value to a known IRI from the embedded instances or from the dictionary
@@ -190,25 +190,41 @@ class PropertyHandler:
             else:
                 self.parser.add(subject_iri, expanded_property, value)
 
-    def get_xml_value(self, value_class: IRI, value: str) -> Any:
+    def get_xml_value(self, value_class: IRI, value: Any) -> Any:  # noqa: PLR0911
         """Return XML type representation from string value.
 
         :param value_class: IRI for XML type.
-        :param value: String value.
+        :param value: Supplied value.
         :return: Parsed value when possible, as an `rdflib` `Literal`.
         """
         try:
             if value_class == XML_ANYURI:
                 return URIRef(value)
-            if value_class == XML_BOOLEAN:
-                return Literal(value.lower() in ["true", "t", "yes", "y"])
             if value_class == XML_DATETIME:
-                return Literal(datetime.fromisoformat(value))
+                return (
+                    Literal(value)
+                    if isinstance(value, datetime)
+                    else Literal(datetime.fromisoformat(str(value)))
+                )
             if value_class == XML_DECIMAL:
-                return Literal(float(value))
+                return (
+                    Literal(value)
+                    if isinstance(value, float)
+                    else Literal(float(value))
+                )
             if value_class == XML_INTEGER:
-                return Literal(int(value))
-            if value_class != XML_STRING:
+                return Literal(value) if isinstance(value, int) else Literal(int(value))
+            if value_class == XML_STRING:
+                return Literal(value) if isinstance(value, str) else Literal(str(value))
+            if value_class == XML_BOOLEAN:
+                if isinstance(value, bool):
+                    return Literal(value)
+                if isinstance(value, str) and (
+                    value.lower() in TRUE_STRINGS or value.lower() in FALSE_STRINGS
+                ):
+                    return Literal(True)
+                # Otherwise drop through.
+            else:
                 logger.critical(
                     "XML class %s not processed - edit %s to add processing",
                     value_class.curie,
@@ -217,13 +233,21 @@ class PropertyHandler:
                 )
         except Exception:
             logger.exception(
-                "Could not interpret value '%s' as instance of %s for property %s of class %s",
+                "Caught exception handling %s (type %s) as %s",
                 value,
+                type(value),
                 value_class.curie,
-                self.target_property.curie,
-                self.parser.target_class.curie,
-                extra={ISSUE_TYPE: IssueType.BAD_VALUE},
             )
+
+        logger.error(
+            "Could not interpret value '%s' (type %s) as instance of %s for property %s of class %s",
+            value,
+            type(value),
+            value_class.curie,
+            self.target_property.curie,
+            self.parser.target_class.curie,
+            extra={ISSUE_TYPE: IssueType.BAD_VALUE},
+        )
 
         return Literal(value)
 

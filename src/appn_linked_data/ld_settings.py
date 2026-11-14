@@ -25,11 +25,12 @@ from appn_linked_data.ld_iri import (
     IRI,
     Triple,
 )
+from appn_linked_data.ld_issue import ISSUE_TYPE, IssueType
 from appn_linked_data.ld_namespaces import (
     NamespaceDefinitionManager,
 )
 
-logger = logging.getLogger("__main__")
+logger = logging.getLogger(__name__)
 
 # Name of file containing settings
 LINKED_DATA_SETTINGS_FILE = "linked-data-settings.yaml"
@@ -182,7 +183,7 @@ class Organisation(BaseModel):
 
     id: str
     name: str
-    ror: str
+    ror: str | None = None
     namespace: str | None = None
     prefix: str | None = None
 
@@ -681,7 +682,7 @@ class LinkedDataSettings:
         """
         return self.organisations.copy()
 
-    def get_organisation_by_id(self, organisation_id: str) -> Organisation | None:
+    def get_organisation_by_id(self, organisation_id: str) -> Organisation:
         """Convenience method to retrieve a single `Organisation` by its id.
 
         :return: `Organisation` for given id, if defined
@@ -689,7 +690,12 @@ class LinkedDataSettings:
         organisations = self.get_organisations()
         if organisation_id in organisations:
             return organisations[organisation_id]
-        return None
+        logger.error(
+            "Request received for unknown organisation %s",
+            organisation_id,
+            extra={ISSUE_TYPE: IssueType.BAD_VALUE},
+        )
+        return Organisation(id=organisation_id, name="UNKNOWN ORGANISATION")
 
     def get_appn(self) -> Organisation:
         """Convenience method to retrieve the APPN central `Organisation`.

@@ -13,7 +13,7 @@ from typing import Any
 from appn_linked_data.ld_constants import APPN_SCHEMA
 from appn_linked_data.ld_dictionary import Dictionary
 
-logger = logging.getLogger("__main__")
+logger = logging.getLogger(__name__)
 
 ### setup_parser ##############################################################
 

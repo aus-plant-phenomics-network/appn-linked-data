@@ -43,7 +43,7 @@ from appn_linked_data.ld_settings import (
     Organisation,
 )
 
-logger = logging.getLogger("__main__")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
@@ -444,7 +444,7 @@ if __name__ == "__main__":
             excel_spreadsheet = f"{EXCEL_SHEET_BASENAME}{node}{EXCEL_SHEET_SUFFIX}"
             excel_path = SOURCE_PATH / excel_spreadsheet
 
-            with IssueHandler(logger) as issue_handler:
+            with IssueHandler() as issue_handler:
                 if not excel_path.exists():
                     logger.error(
                         "Excel path %s invalid",

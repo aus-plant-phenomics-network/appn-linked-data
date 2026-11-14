@@ -22,7 +22,7 @@ class IssueHandler(logging.Handler, AbstractContextManager):
     user-oriented messages to be collected.
     """
 
-    def __init__(self, logger: logging.Logger) -> None:
+    def __init__(self, logger: logging.Logger | None = None) -> None:
         """Set up dictionary to collect `LogRecord`s that include an `IssueType` in `extra`.
 
         Issues are sorted by logging level and then by `IssueType`.
@@ -31,9 +31,12 @@ class IssueHandler(logging.Handler, AbstractContextManager):
         """
         super().__init__(logging.INFO)
 
-        # Add as a handler to the specified logger
-        self.logger: logging.Logger | None = logger
-        logger.addHandler(self)
+        # Add as a handler to the specified logger or to the logger for the
+        # APPN linked data package.
+        if logger is None:
+            logger = logging.getLogger(__name__.split(".")[0])
+        self.logger: logging.Logger = logger
+        self.logger.addHandler(self)
 
         # The issues dictionary groups first by logging level and then
         # by LogIssue.
@@ -74,9 +77,7 @@ class IssueHandler(logging.Handler, AbstractContextManager):
 
     def close(self) -> None:
         """Remove handler from logger."""
-        if self.logger is not None:
-            self.logger.removeHandler(self)
-            self.logger = None
+        self.logger.removeHandler(self)
         super().close()
 
     def __exit__(self, *exc_details: Any) -> Literal[False]:

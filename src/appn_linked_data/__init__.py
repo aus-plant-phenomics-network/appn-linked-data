@@ -38,10 +38,17 @@ from appn_linked_data.ld_iri import (
     Triple,
     TriplePosition,
 )
+from appn_linked_data.ld_issue import (
+    IssueHandler,
+    IssueType,
+)
 from appn_linked_data.ld_namespaces import (
     AssetLoadLocation,
     NamespaceDefinition,
     NamespaceDefinitionManager,
+)
+from appn_linked_data.ld_parser import (
+    DictParser,
 )
 from appn_linked_data.ld_settings import (
     CompletionRule,
@@ -81,9 +88,11 @@ __all__ = [
     "XML_SCHEMA",
     "AssetLoadLocation",
     "CompletionRule",
+    "DictParser",
     "Dictionary",
     "ExplicitTermsFilter",
-    "Issue",
+    "IssueHandler",
+    "IssueType",
     "LinkedDataSettings",
     "NamespaceDefinition",
     "NamespaceDefinitionManager",

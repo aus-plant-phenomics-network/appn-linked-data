@@ -19,7 +19,7 @@ from pydantic import (
 from appn_linked_data import settings
 from appn_linked_data.ld_constants import APPN_SCHEMA
 
-logger = logging.getLogger("__main__")
+logger = logging.getLogger(__name__)
 
 
 # Name of file containing settings

@@ -93,6 +93,7 @@ class PropertyHandler:
         parser: DictParser,
         property_name: str,
         target_property: IRI,
+        *,
         range_class: IRI | None = None,
     ) -> None:
         """Initialise handler.
@@ -433,6 +434,7 @@ class DictParser:
         dictionary: Dictionary,
         target_class: IRI,
         organisation: Organisation,
+        *,
         graph: Graph | None = None,
         generate_concepts: bool = False,
         is_embedded: bool = False,

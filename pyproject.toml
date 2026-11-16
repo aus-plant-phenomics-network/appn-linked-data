@@ -59,7 +59,7 @@ dev = [
 ]
 
 # [project.scripts]
-# appn-linked-data = "appn_example.cli:app"
+# appn-linked_data = "appn_linked_data.cli:app"
 
 [project.urls]
 Homepage = "https://github.com/aus-plant-phenomics-network/appn-linked-data"
@@ -179,7 +179,7 @@ ignore = [
 convention = "google"               # §4.1: Google or NumPy — pick one per repo
 
 [tool.ruff.lint.isort]
-known-first-party = ["appn_example"]
+known-first-party = ["appn_linked_data"]
 required-imports = ["from __future__ import annotations"]   # §4.2
 
 [tool.ruff.lint.flake8-builtins]

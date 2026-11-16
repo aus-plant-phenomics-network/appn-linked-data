@@ -1,10 +1,5 @@
 # appn-linked-data - APPN linked data tools
 
-<!--
-  Structure follows APPN Coding Standards §3.2. Answer the questions in order.
-  Delete every {{PLACEHOLDER}} and every HTML comment before your first commit.
--->
-
 This repository provides the linked-data tools used across the Australian Plant
 Phenotyping Network ([APPN](https://[plantphenomics.org.au/])), including:
 
@@ -16,7 +11,6 @@ Phenotyping Network ([APPN](https://[plantphenomics.org.au/])), including:
 
 **Active** — maintained by **APPN Central Data Team**.
 Contact: **data.appn@plantphenomics.org.au**
-<!-- Never a personal email; people rotate, roles do not. -->
 
 ## Install
 
@@ -30,22 +24,35 @@ make install
 
 ## Run
 
+![Deployment model](docs/puml/components.png)
+
+`appn_linked_data` includes the following components:
+
+* **NamespaceDefinitionManager**: Singleton to load and manage namespace definitions for all components.
+* **IRI**: Class to represent an IRI/URI and offer quick access to parts and to CURIE representations, subclass of `rdflib.URIRef` and serves as a pydantic model.
+* **LinkedDataSettings**: Singleton to supply configuration options for all other components - relies on `NamespaceDefinitionManager` and `IRI`.
+* **Dictionary**: Class for loading sets of linked data assets (schemas, vocabularies and metadata) into an `rdflib.Graph` and providing helper functions for common queries.
+* **DictParser**: Class for converting Python dictionaries or `pandas` `Series` into triples in an `rdflib.Graph`.
+* **IssueHandler**: Class for collecting user-focused log messages for use in reports.
+* **ExcelVocabularyParser**: Command-line interface (as `vocabulariser.py`) to generate a linked data vocabularies from Excel spreadsheets in `src/vocabulary_templates/`.
+* **Explorer**: Command-line interface to explore a `Dictionary` instance.
+
+Generate new copies of linked data vocabularies for APPN and for APPN nodes:
+
+```bash
+python vocabulariser.py
+```
+
 Explore the APPN schema and referenced schemas:
 
 ```bash
-python appn_explorer.py
+python explorer.py
 ```
 
 Explore the APPN schema, referenced schemas and the APPN and Adelaide University vocabularies:
 
 ```bash
-python appn_explorer.py -a APPN -a AU
-```
-
-Refresh all turtle node vocabularies from their Excel file definitions:
-
-```bash
-python appn_vocabulary.py
+python explorer.py -a APPN -a AU
 ```
 
 ## Configure

@@ -95,6 +95,7 @@ class PropertyHandler:
         parser: DictParser,
         property_name: str,
         target_property: IRI,
+        *,
         range_class: IRI | None = None,
     ) -> None:
         """Initialise handler.
@@ -1121,7 +1122,10 @@ class ExcelVocabularyParser:
 
         :return: True no issues were detected.
         """
-        return self.verify_existing_terms() and self.verify_referenced_objects()
+        # As additional verification methods are added, ensure that all tests
+        # are run by anding their return values with a rolling status.
+        valid = self.verify_existing_terms()
+        return self.verify_referenced_objects() and valid
 
     def serialize(self, vocabulary_path: Path) -> bool:
         """Write the vocabulary to a file.

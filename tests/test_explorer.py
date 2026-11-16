@@ -14,6 +14,10 @@ from appn_linked_data import (
     UQ_VOCABULARY,
 )
 
+# These tests run explorer.py in a separate process, so they belong in the
+# integration stage (pyproject.toml: "crosses a real boundary").
+pytestmark = pytest.mark.integration
+
 ExplorerTest = namedtuple("ExplorerTest", ["name", "args", "expected", "not_expected"])
 """Simple class to manage a test of explorer.py.
 
@@ -175,7 +179,7 @@ EXPLORER_RESULTS: dict[str, str] = {}
 @pytest.fixture
 def explorer_results() -> dict[str, str]:
     if len(EXPLORER_RESULTS) < len(EXPLORER_TESTS):
-        with Popen(
+        with Popen(  # noqa: S603 RUF100
             ["python", "src/appn_linked_data/explorer.py", "-a", "au"],  # noqa: S607 RUF100
             stdin=PIPE,
             stdout=PIPE,

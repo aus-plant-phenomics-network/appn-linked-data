@@ -1,0 +1,120 @@
+@startuml
+
+component Explorer #ddddff [
+Explorer
+(explorer.py)
+----
+Command line tool
+
+Shows content from a
+Dictionary.
+]
+
+component IssueHandler #ddffdd [
+IssueHandler
+(ld_issue.py)
+----
+Collects issues relevant to
+user.
+]
+
+component ExcelVocabularyParser #ddffdd [
+ExcelVocabularyParser
+(ld_parser.py)
+----
+Generates vocabulary from
+a spreadsheet
+]
+
+component Vocabulariser #ddddff [
+Vocabulariser
+(vocabulariser.py)
+----
+Command line tool
+
+Processes Excel vocabulary
+spreadsheets
+]
+
+component DictParser #ddffdd [
+DictParser
+(ld_parser.py)
+----
+Generates linked data
+from dictionaries.
+]
+
+component Dictionary #ddffdd [
+Dictionary
+(ld_dictionary.py)
+----
+Loads and exposes
+linked-data assets.
+]
+
+component LinkedDataSettings #ddffdd [
+LinkedDataSettings
+(ld_settings.py)
+----
+Singleton class
+
+Configuration options for
+modules in appn_linked_data.
+]
+
+component NamespaceDefinitionManager #ddffdd [
+NamespaceDefinitionManager
+(ld_namespaces.py)
+----
+Singleton class
+
+Manages namespaces, prefixes
+and asset locations.
+]
+
+component IRI #ddffdd [
+IRI
+(ld_iri.py)
+----
+Represents linked-data IRIs using
+known namespaces.
+]
+
+file NamespaceDefinitions [
+    namespace-definitions.yaml
+]
+
+file LinkedDataControlSettings [
+    linked-data-settings.yaml
+]
+
+collections assets [
+    schemas, vocabularies, metadata
+    ----
+    Schemas and vocabularies are
+    packaged in appn_linked_data.
+]
+
+collections reports [
+    reports
+    ----
+    Issue reports for user
+    attention.
+]
+
+IRI --> NamespaceDefinitionManager: uses
+LinkedDataSettings --> NamespaceDefinitionManager: uses
+LinkedDataSettings --> IRI: uses
+LinkedDataSettings --> LinkedDataControlSettings: reads
+NamespaceDefinitionManager --> NamespaceDefinitions: reads
+Dictionary --> IRI: uses
+Dictionary --> LinkedDataSettings: uses
+Dictionary --> assets: reads
+Explorer --> Dictionary: uses
+DictParser --> Dictionary: uses
+ExcelVocabularyParser --> DictParser: uses
+ExcelVocabularyParser --> assets: generates\nvocabularies
+Vocabulariser --> IssueHandler: uses
+Vocabulariser --> reports: generates
+Vocabulariser --> ExcelVocabularyParser : uses
+@enduml

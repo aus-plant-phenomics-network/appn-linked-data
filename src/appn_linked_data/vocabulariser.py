@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""ld_parser - Parsers to generate RDF objects from dictionaries and tabular data."""
+"""vocabulariser - CLI to run parsers for Excel spreadsheet vocabularies."""
 
 from __future__ import annotations
 
@@ -38,7 +38,6 @@ def process_argv(argv: list[str], settings: LinkedDataSettings) -> dict[str, Any
     """Parse sys.argv values to extract a list of nodes for processing and a list of output formats.
 
     :param argv: Arguments from sys.argv.
-    :param node_ids: List of abbreviated names for APPN nodes (including APPN for APPN central).
     :return: Processed arguments
     """
     parser = argparse.ArgumentParser(

@@ -334,9 +334,13 @@ class Dictionary:
                         )
                         success = False
                     # Don't try importing XSD - no RDF representation available
-                    elif ns is not None and ns not in self.loaded and ns != XML_SCHEMA:
-                        if not self.load(ns):
-                            success = False
+                    elif (
+                        ns is not None
+                        and ns not in self.loaded
+                        and ns != XML_SCHEMA
+                        and not self.load(ns)
+                    ):
+                        success = False
                     logger.debug("Found IRI <%s>", iri)
                     iris.add(iri)
         return success

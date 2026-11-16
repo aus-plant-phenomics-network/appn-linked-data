@@ -41,6 +41,9 @@ class IRI(URIRef):
     IRI is also a pydantic model.
 
     IRI can be used wherever a URIRef is expected.
+
+    WARNING: IRI is a subclass of URIRef which is a subclass of str, so any
+    type check for IRI must come before that for str.
     """
 
     # Reserve property names for instances
@@ -235,13 +238,15 @@ TRIPLE_LENGTH = 3
 class Triple:
     """Simple class to represent a triple."""
 
+    # Reserve property names for instances
+    __slots__ = ("_object", "_predicate", "_subject")
+
     def __init__(self, s: Node, p: Node, o: Node) -> None:
         """Produce `Triple` with IRIs in place of URIRefs.
 
         :param s: Triple subject as `rdflib` `Node`
         :param p: Triple predicate as `rdflib` `Node`
         :param o: Triple object as `rdflib` `Node`
-        :return: `Triple`
         """
         self._subject = IRI(s) if isinstance(s, URIRef) else s
         self._predicate = IRI(p) if isinstance(p, URIRef) else p

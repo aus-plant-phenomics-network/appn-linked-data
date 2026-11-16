@@ -138,13 +138,14 @@ property_range_classes:
   "appn:BiologicalMaterial":
     "skos:broader": "https://schema.plantphenomics.org.au/BiologicalMaterial"
 
-# Classes that should be serialised to CSV in RO-Crates.
-ro_crate_table_classes:
-  - "appn:ObservationUnit"
-  - "appn:Observation"
-  - "appn:Control"
-  - "appn:Treatment"
-  - "appn:Location"
+# Most classes are serialises as triples in RO-Crates, but some classes may be better
+# managed as CSV (via pandas DataFrames) or in both formats.
+formats_for_class_triples:
+  "appn:ObservationUnit": "both"
+  "appn:Observation": "dataframe"
+  "appn:Control": "dataframe"
+  "appn:Treatment": "dataframe"
+  "appn:Location": "dataframe"
 
 # Properties associated with APPN and its nodes
 organisations:

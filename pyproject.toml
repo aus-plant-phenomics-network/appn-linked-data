@@ -18,7 +18,7 @@ name = "appn-linked-data"
 version = "0.1.0"
 description = "Linked-data tools used across the Australian Plant Phenotyping Network"
 readme = "README.md"
-requires-python = ">=3.11"          # §4.1: 3.11+, 3.12 preferred for new projects
+requires-python = ">=3.12"          # §4.1: 3.11+, 3.12 preferred for new projects
 license = "Apache-2.0"              # §3.10: SPDX identifier; LICENSE file in root
 authors = [
     { name = "Australian Plant Phenomics Network", email = "data.appn@plantphenomics.org.au" },
@@ -28,7 +28,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Typing :: Typed",
 ]
@@ -52,7 +51,7 @@ dev = [
     "pre-commit>=4.0",
     "pytest>=8.3",                  # §4.1: testing
     "pytest-cov>=6.0",
-    "ruff>=0.8",                    # §4.1: linter (and formatter)
+    "ruff>=0.17.2",                    # §4.1: linter (and formatter)
     "types-python-dateutil",
     "types-PyYAML",
     "pandas-stubs",
@@ -85,7 +84,7 @@ packages = ["src/appn_linked_data"]
 # "automate the boring rules": formatting is not a thing to have opinions about.
 [tool.black]
 line-length = 88                    # §3.13 and §4.1
-target-version = ["py311", "py312"]
+target-version = ["py312"]
 
 # Files Black rewrites. Add `|\.ipynb$` to also format committed notebooks —
 # they still get formatted even though they are never the deliverable (§4.4).
@@ -112,7 +111,7 @@ preview = false
 # ==============================================================================
 [tool.ruff]
 line-length = 88                    # MUST match [tool.black] line-length
-target-version = "py311"
+target-version = "py312"
 src = ["src", "tests"]
 extend-exclude = ["migrations/versions"]
 

@@ -51,6 +51,7 @@ from appn_linked_data.ld_parser import (
     DictParser,
 )
 from appn_linked_data.ld_settings import (
+    ClassOutputFormat,
     CompletionRule,
     ExplicitTermsFilter,
     LinkedDataSettings,
@@ -87,6 +88,7 @@ __all__ = [
     "WSU_VOCABULARY",
     "XML_SCHEMA",
     "AssetLoadLocation",
+    "ClassOutputFormat",
     "CompletionRule",
     "DictParser",
     "Dictionary",

@@ -1,0 +1,709 @@
+#!/usr/bin/env python3
+
+"""ld_crate - Organise data assets and metadata as an RO-Crate."""
+
+from __future__ import annotations
+
+import csv
+import logging
+import warnings
+from functools import cache
+from pathlib import Path
+
+from rocrate.model import (
+    ContextEntity,
+    Dataset,
+    File,
+)
+from rocrate.rocrate import ROCrate
+
+from appn_linked_data.ld_constants import (
+    APPN_SCHEMA,
+    APPN_VOCABULARY,
+    DEFAULT_PREFIXES,
+    SCHEMA_SCHEMA,
+    SKOS_SCHEMA,
+)
+from appn_linked_data.ld_dictionary import (
+    Dictionary,
+)
+from appn_linked_data.ld_iri import IRI, RDF_PROPERTY, RDFS_COMMENT
+from appn_linked_data.ld_namespaces import (
+    Organisation,
+)
+from appn_linked_data.ld_settings import (
+    LinkedDataSettings,
+)
+from appn_linked_data.ld_types import CompletionRuleType
+
+logger = logging.getLogger(__name__)
+
+SCHEMA_THING = IRI("schema:Thing")
+SCHEMA_FILE = IRI("schema:CreativeWork")
+SCHEMA_DATASET = IRI("schema:Dataset")
+
+JSONLD_ID = "@id"
+JSONLD_TYPE = "@type"
+
+DATASET_ROOT = "https://data.plantphenomics.org.au/"
+DATASET_PREFIX = "this"
+
+type PropertyValue = (
+    IRI
+    | str
+    | int
+    | float
+    | dict[str, IRI | str]
+    | list[IRI | str | int | float | dict[str, IRI | str]]
+)
+
+
+def at(iri: str | IRI) -> dict[str, str | IRI]:
+    """Return dictionary to represent referenced IRI
+
+    :param iri: String for IRI
+    :return:    Dictionary for supplied IRI as the id for an object
+    """
+    return {JSONLD_ID: iri}
+
+
+class Crate:
+    def __init__(
+        self, settings: LinkedDataSettings, organisation: Organisation, name: str
+    ) -> None:
+        """Wrapper to build RO-Crate for APPN dataset
+
+        :param settings:      Configuration settings
+        :param organisation:  `Organisation` owning RO-Crate
+        :param name:          Unique name for dataset
+        """
+        self.settings = settings
+        self.organisation = organisation
+        self.name = name
+
+        self.namespace = (
+            f"{DATASET_ROOT}{organisation.id}/{NAME_REPLACEMENT_PATTERN.sub('', name)}/"
+        )
+        # TODO: Verify uniqueness for namespace
+
+        # The rdflib library generates a warning ("ConjunctiveGraph is deprecated, use Dataset instead")
+        warnings.filterwarnings("ignore", category=DeprecationWarning, module="rdflib")
+
+        # The openpyxl library generates a warning ("Data Validation extension is not supported and will be removed")
+        warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
+
+        # Load schemas that provide key definitions. APPN_SCHEMA does not
+        # directly reference SKOS, so SKOS_SCHEMA is separately loaded, but
+        # others are imported based on their use in these two schemas.
+        # For any vocabulary other than the central APPN vocabulary, load
+        # the central vocabulary so its terms can be checked.
+        self.dictionary = Dictionary()
+        self.dictionary.load(APPN_SCHEMA)
+        self.dictionary.load(SKOS_SCHEMA)
+        appn = self.settings.get_appn()
+        self.dictionary.load(appn.namespace, asset_prefix=appn.prefix)
+        self.dictionary.load(organisation.namespace, asset_prefix=organisation.prefix)
+        self.dictionary.bind(DATASET_PREFIX, self.namespace)
+        self.dictionary.import_references()
+
+        # Indexes for uniquely identifying unnamed objects per class (as IRI)
+        self.seeds: dict[IRI, int] = {}
+
+        # Keep track of objects already created - map of IRIs to properties
+        self.known_instances: dict[IRI, dict[str | IRI, PropertyValue]] = {}
+
+        # Keep track of objects already created - map of class IRIs to instances.
+        # This includes mappings for all classes included in the @type parameter.
+        # This is to allow e.g. a GrowthFacility to be recognised as an
+        # ObservationUnit.
+        self.known_instances_by_class: dict[IRI, set[IRI]] = {}
+
+        self.files: list[
+            tuple[Path, str, dict[IRI | str, PropertyValue], bool, list[str] | None]
+        ] = []
+
+        self.primary_classes: dict[IRI, IRI] = {}
+
+    def add_folder(
+        self,
+        source: Path,
+        destination: str,
+        properties: dict[str, PropertyValue] | None = None,
+        extra_classes: list[str] | None = None,
+    ) -> str:
+        """Add file system folder to RO-Crate (as Dataset)
+
+        :param source:      Path to folder to add
+        :param destination: Path inside RO-Crate (as string)
+        :param properties:  Dictionary of properties for metadata object
+        :return:            Destination string (the id for the object)
+        """
+        return self.add_file(
+            source, destination, properties, True, extra_classes=extra_classes
+        )
+
+    def add_file(
+        self,
+        source: Path,
+        destination: str,
+        properties: dict[str, PropertyValue] | None = None,
+        is_folder: bool = False,
+        extra_classes: list[str] | None = None,
+    ) -> str:
+        """Add file system object (including folder to RO-Crate)
+
+        :param source:      Path to file/folder to add
+        :param destination: Path inside RO-Crate (as string)
+        :param properties:  Dictionary of properties for metadata object
+        :param is_folder:   If true, the object is a `schema:Dataset`
+        :return:            Destination string (the id for the object)
+        """
+        destination = str(destination)
+        current_properties: dict[str | IRI, PropertyValue] = {
+            JSONLD_TYPE: SCHEMA_DATASET if is_folder else SCHEMA_FILE
+        }
+
+        if properties is not None:
+            self.process_properties(SCHEMA_FILE, current_properties, properties)
+
+        self.files.append(
+            (source, destination, current_properties, is_folder, extra_classes)
+        )
+        return destination
+
+    def add(
+        self,
+        class_: str,
+        name: str | None = None,
+        properties: dict[str, PropertyValue] | None = None,
+    ) -> IRI:
+        """Add an object or update an object in the crate
+
+        This method stores the IRI and current properties in the
+        `known_instances` dictionary. This simplifies potentially
+        adding extra properties later in processing. All instances
+        are serialised to the RO-Crate by the `serialise` method.
+
+        The name is used to create the name part of the IRI and to
+        recognise references to the same object by class.
+
+        :param class_: The primary class of the object to be added.
+        :param name:   The name (label) for the object
+        :param properties: Properties and values for the object
+        :return: `IRI` for the object
+        """
+        class_iri = self.find_class(class_)
+
+        seeded = False
+        if name is None:
+            name = self.seed_name(class_iri)
+            seeded = True
+
+        if properties is None:
+            properties = {}
+
+        if "name" not in properties:
+            properties["name"] = name
+
+        current_instance = None
+        if JSONLD_ID in properties and isinstance(properties[JSONLD_ID], str):
+            iri = self.dictionary.get_iri(properties.pop(JSONLD_ID))
+        elif (iri := self.parse_iri(name)) is None:
+            if not seeded:
+                current_instance = self.find_known_instance(class_iri, name)
+            if current_instance is not None:
+                iri = current_instance
+            else:
+                iri = self.dictionary.build_iri(class_iri, self.namespace, name)
+
+        if iri in self.known_instances:
+            current_properties = self.known_instances[iri]
+        else:
+            explicit_classes = []
+            for explicit_class in self.dictionary.list_explicit_classes(class_iri):
+                explicit_classes.append(explicit_class.name)
+                if explicit_class not in self.known_instances_by_class:
+                    self.known_instances_by_class[explicit_class] = set()
+                self.known_instances_by_class[explicit_class].add(iri)
+            current_properties: dict[str | IRI, PropertyValue] = {
+                JSONLD_TYPE: explicit_classes
+            }
+            self.known_instances[iri] = current_properties
+            self.primary_classes[iri] = class_iri
+
+        if properties is not None:
+            self.process_properties(class_iri, current_properties, properties)
+
+        completion_rules = self.settings.get_completion_rules_for_class(class_iri.name)
+        if len(completion_rules) > 0:
+            for desired_property, rule in completion_rules.items():
+                # Current rules are expected to fire only of no instance of the desired
+                # property is found - this could be controlled by additional rule
+                # properties
+                if desired_property not in current_properties:
+                    if "type" not in rule:
+                        self.logger.log(
+                            logger.ERROR,
+                            "Configuration",
+                            IssueMessage.COMPLETION_RULE_MISSING_TYPE,
+                            CONFIGURATION_FILE=self.settings.settings_filepath,
+                            CONFIGURATION_KEY=ConfigurationKey.COMPLETION_RULES,
+                            APPN_SCHEMA_CLASS=class_iri.curie,
+                            TARGET_PROPERTY=desired_property,
+                        )
+                        success = False
+                    elif rule["type"] == CompletionRuleType.REFLEXIVE.value:
+                        # Rules with the type "reflexive" indicate that the IRI should have
+                        # a reflexive property linking it to itself.
+                        logger.debug(
+                            f"Completing iri {iri} with property {desired_property} using rule {rule}"
+                        )
+                        current_properties[desired_property] = at(iri.iri)
+                    else:
+                        self.logger.log(
+                            logger.ERROR,
+                            "Configuration",
+                            IssueMessage.COMPLETION_RULE_UNKNOWN_TYPE,
+                            CONFIGURATION_FILE=self.settings.settings_filepath,
+                            CONFIGURATION_KEY=ConfigurationKey.COMPLETION_RULES,
+                            APPN_SCHEMA_CLASS=class_iri.curie,
+                            TARGET_PROPERTY=desired_property,
+                            COMPLETION_RULE_TYPE=rule["type"],
+                        )
+                        success = False
+
+        return iri
+
+    def process_properties(
+        self, class_iri: IRI, current_properties: dict, properties: dict
+    ) -> None:
+        appn = self.settings.get_appn()
+
+        for new_property, value in properties.items():
+            property_iri = self.find_property(class_iri, new_property)
+            if property_iri.prefix in ["schema", "appn"]:
+                property_ = property_iri.name
+            else:
+                property_ = property_iri.iri
+            if isinstance(value, str):
+                if (value_iri := self.parse_iri(value)) is not None:
+                    value = at(value_iri.iri)
+                else:
+                    range_classes = self.dictionary.list_range_classes_for_property(
+                        property_iri, namespace=APPN_SCHEMA
+                    )
+                    if len(range_classes) > 0:
+                        if len(range_classes) > 1:
+                            self.logger.log(
+                                logger.ERROR,
+                                __name__,
+                                IssueMessage.RANGE_CLASS_NOT_SELECTED,
+                                DOMAIN_APPN_CLASS=class_iri.curie,
+                                SELECTED_PROPERTY=property_,
+                                RANGE_CLASSES=", ".join(
+                                    [class_.curie for class_ in range_classes]
+                                ),
+                            )
+                            # TODO - Use placeholder property to document the property and value string
+                            # Check schema.org
+                        else:
+                            current_instance = self.find_known_instance(
+                                range_classes[0], value
+                            )
+                            if current_instance is not None:
+                                value = at(current_instance.iri)
+                            else:
+                                value = at(
+                                    self.dictionary.build_iri(
+                                        range_classes[0], self.namespace, value
+                                    ).curie
+                                )
+                    elif SCHEMA_FILE in self.dictionary.list_range_classes_for_property(
+                        property_iri, namespace=SCHEMA_SCHEMA
+                    ):
+                        value = at(value)
+            elif isinstance(value, list):
+                for i in range(len(value)):
+                    if (
+                        isinstance(value[i], str)
+                        and self.parse_iri(value[i]) is not None
+                    ):
+                        value[i] = at(value[i])
+            if property_ in current_properties:
+                values = current_properties[property_]
+                if not isinstance(values, list):
+                    values = [values]
+                for value in value if isinstance(value, list) else [value]:
+                    if value not in values:
+                        values.append(value)
+                if len(values) == 1:
+                    values = values[0]
+                current_properties[property_] = values
+            else:
+                current_properties[property_] = value
+
+    def serialise(
+        self,
+        ro_crate_folder: Path,
+        properties: dict | None = None,
+        use_tables: bool = False,
+    ) -> None:
+        """Write the RO-Crate to disk
+
+        This method uses the `rocrate` package to write the content
+        but then rewrites it to include the APPN context.json and to
+        use some namespace prefixes for readbility.
+
+        :param ro_crate_folder: Path to folder to contain the RO-Crate
+        """
+        ro_crate_folder.mkdir(parents=True, exist_ok=True)
+
+        # Copy known instances so table classes can be removed without harm
+        known_instances = self.known_instances.copy()
+        table_classes = [
+            self.dictionary.get_iri(f"{APPN_SCHEMA}{class_name}")
+            for class_name in self.settings.get_ro_crate_table_classes()
+        ]
+        if use_tables:
+            for table_class in table_classes:
+                if table_class in self.known_instances_by_class:
+                    table_instances: dict[IRI, dict[str, str | int | float]] = {}
+                    high_cardinality_properties: set[str] = set()
+                    property_map: set[str] = set()
+                    for iri in self.known_instances_by_class[table_class]:
+                        iri_properties = known_instances[iri]
+                        for property_ in iri_properties:
+                            if property_ != JSONLD_TYPE:
+                                if (
+                                    isinstance(iri_properties[property_], list)
+                                    and len(iri_properties[property_]) > 1
+                                ):
+                                    high_cardinality_properties.add(property_)
+                                else:
+                                    property_map.add(property_)
+                    columns = ["iri", "type"] + [
+                        property_
+                        for property_ in property_map
+                        if property_ not in high_cardinality_properties
+                    ]
+                    file_name = self.write_table(
+                        ro_crate_folder,
+                        table_class,
+                        known_instances,
+                        self.known_instances_by_class[table_class],
+                        columns,
+                    )
+                    description = f"Table containing definitions of instances of the APPN schema class {table_class.name}"
+                    class_description = self.dictionary.get_property_for_subject(
+                        table_class, RDFS_COMMENT
+                    )
+                    if class_description is not None:
+                        description += f" ({class_description})"
+                    self.add(
+                        "TableFile",
+                        file_name.parts[-1],
+                        {
+                            JSONLD_ID: file_name.relative_to(
+                                ro_crate_folder
+                            ).as_posix(),
+                            "containsInstancesOf": table_class.iri,
+                            "dateCreated": "2024-10-11T11:12:26+11:00",
+                            "encodingFormat": "text/csv",
+                            "description": class_description,
+                            "producer": {"@id": self.organisation.ror},
+                        },
+                    )
+        crate = ROCrate()
+        for (
+            source,
+            destination,
+            file_properties,
+            is_folder,
+            extra_classes,
+        ) in self.files:
+            if is_folder:
+                f = crate.add(
+                    Dataset(
+                        crate,
+                        source=source,
+                        dest_path=destination,
+                        properties=file_properties,
+                    )
+                )
+            else:
+                f = crate.add(
+                    File(
+                        crate,
+                        source=source,
+                        dest_path=destination,
+                        properties=file_properties,
+                    )
+                )
+            if extra_classes is not None:
+                classes = ["Dataset" if is_folder else "CreativeWork"]
+                for class_name in extra_classes:
+                    class_iri = self.find_class(class_name)
+                    if class_iri is not None:
+                        classes.append(
+                            class_iri.name
+                            if class_iri.ns in [APPN_SCHEMA, SCHEMA_SCHEMA]
+                            else class_iri.iri
+                        )
+                f._jsonld[JSONLD_TYPE] = classes
+        for iri, iri_properties in self.known_instances.items():
+            crate.add(ContextEntity(crate, iri.iri, iri_properties))
+
+        if properties is not None:
+            crate_properties = crate.default_entities[0].properties()
+            crate_properties |= properties
+
+        crate.write(ro_crate_folder)
+
+        # Make the metadata more readable - this could be a subprocess
+        # using sed, but we are avoiding the extra dependency.
+        appn = self.settings.get_appn()
+        metadata: list[str] = []
+        with open(ro_crate_folder / "ro-crate-metadata.json") as f:
+            for line in f.readlines():
+                if "@context" in line:
+                    metadata.append('    "@context": [\n')
+                    metadata.append(
+                        '         "https://w3id.org/ro/crate/1.2/context",\n'
+                    )
+                    metadata.append(
+                        '         "https://schema.plantphenomics.org.au/context.json",\n'
+                    )
+                    metadata.append("         {\n")
+                    metadata.append(f'             "this": "{self.namespace}",\n')
+                    metadata.append(
+                        f'             "{self.organisation.prefix}": "{self.organisation.namespace}",\n'
+                    )
+                    metadata.append(
+                        f'             "{appn.prefix}": "{appn.namespace}"\n'
+                    )
+                    metadata.append("         }\n")
+                    metadata.append("    ],\n")
+                else:
+                    metadata.append(
+                        line.replace(self.namespace, "this:")
+                        .replace(
+                            self.organisation.namespace, f"{self.organisation.prefix}:"
+                        )
+                        .replace(appn.namespace, f"{appn.prefix}:")
+                        .replace(APPN_SCHEMA, "")
+                    )
+        with open(ro_crate_folder / "ro-crate-metadata.json", "w") as f:
+            f.writelines(metadata)
+
+    def write_table(
+        self,
+        table_folder: Path,
+        table_class: IRI,
+        known_instances: dict[IRI, dict[IRI | str, PropertyValue]],
+        instance_iris: set[IRI],
+        columns: list[str],
+    ) -> Path:
+        """Process instances for schema class by writing a CSV file containing all instances as rows
+
+        Creates a new CSV file named after the class and located in the specified folder.
+        Processes all instance IRIs using data from known_instances. For every instance,
+        a row is created with the IRI and all properties matching the supplied list of
+        columns. If all properties are handled, the instance is removed from `known_instances`.
+        Otherwise only the unhandled properties are left.
+
+        :param table_folder: Path to (existing) folder into which the CSV file should be written
+        :param table_class: IRI for class to be serialised
+        :param known_instances: Dictionary mapping IRIs to property dictionaries for all graph objects
+        :param instance_iris: The set of IRIs belonging to the class
+        :param columns: List of column headings (matching property names in known instances)
+        :return: Path to CSV file
+        """
+        file_path = table_folder / f"{table_class.name}.csv"
+        appn_prefix = DEFAULT_PREFIXES[APPN_SCHEMA]
+        with open(file_path, "w") as csv_file:
+            csv_writer = csv.writer(csv_file, delimiter=",")
+            compact_columns = columns.copy()
+            for c in range(2, len(compact_columns)):
+                if compact_columns[c].startswith("http"):
+                    compact_columns[c] = str(self.compact(compact_columns[c]))
+                elif ":" not in compact_columns[c]:
+                    compact_columns[c] = f"{appn_prefix}:{compact_columns[c]}"
+            csv_writer.writerow(compact_columns)
+            for iri in instance_iris:
+                instance = known_instances[iri]
+                row: list[str | int | float] = [
+                    iri.curie,
+                    self.primary_classes[iri].curie,
+                ]
+                for column in columns[2:]:
+                    if column in instance:
+                        row.append(self.compact(instance.pop(column)))
+                    else:
+                        row.append("")
+                csv_writer.writerow(row)
+                if len(instance) == 0:
+                    known_instances.pop(iri)
+        return file_path
+
+    def compact(self, value: PropertyValue) -> str | float | int:
+        if isinstance(value, list):
+            if len(value) == 1:
+                value = value[0]
+            else:
+                return ""
+        # The following is not elif because it handles dictionaries extracted
+        # from lists
+        if isinstance(value, dict):
+            if JSONLD_ID in value:
+                value = value[JSONLD_ID]
+            else:
+                return ""
+        if isinstance(value, str) and value.startswith("http"):
+            return self.dictionary.get_iri(value).curie
+        return value
+
+    @cache
+    def find_class(self, class_: str) -> IRI:
+        """Find `IRI` for class with supplied name
+
+        If the class is unrecognised, log issue and use schema:Thing.
+
+        :param class_: String holding IRI, CURIE or unqualified name for class
+        :return: IRI for class
+        """
+        for namespace in [APPN_SCHEMA, SCHEMA_SCHEMA]:
+            namespace_classes = self.dictionary.list_classes(namespace=namespace)
+            for namespace_class in namespace_classes:
+                if namespace_class.name == class_:
+                    return namespace_class
+
+        # TODO - Log unrecognised class
+        return SCHEMA_THING
+
+    def find_known_instance(self, class_iri: IRI, name: str) -> IRI | None:
+        """Select existing object meeting policy-based criteria as the current
+        instance of a class with a given name
+
+        This is a special method to support parsing definitions for objects
+        complying with the APPN schema and having a specified name
+
+        The policy is to look for instances of the specified class in the
+        current crate and otherwise in the vocabulary namespace for the
+        current APPN node or (if no such match is found) in the central
+        APPN vocabulary namespace.
+
+        Candidates are evaluated based on the IRI string for each instance.
+        The goal is to find an instance for which IRI belongs to the expected
+        class (which may mean belonging to a subclass) and that the name part
+        of the IRI ends wuth a cleaned version of the supplied name. Case is
+        ignored when comparing the cleaned name parts, so a request for an
+        instance of the GrowthFacilityType class with any of "glasshouse",
+        "Glasshouse", "GlassHouse", "Glass House", "GLASSHOUSE", etc. provided
+        as the search name will match an instance with an IRI ending "gft_Glasshouse".
+
+        :param class_iri: The class to which the instance should belong
+        :param name:      String name for the search
+        :return:          Matching instance if found, else None
+        """
+        iri_name = "_" + self.dictionary.build_clean_name(name).lower()
+        if class_iri in self.known_instances_by_class:
+            for iri in self.known_instances_by_class[class_iri]:
+                if iri.name.lower().endswith(iri_name):
+                    return iri
+
+        for namespace in [self.organisation.namespace, APPN_VOCABULARY]:
+            for iri in self.dictionary.list_instances(class_iri, namespace=namespace):
+                if iri.name.lower().endswith(iri_name):
+                    return iri
+
+        return None
+
+    def find_property(self, class_iri: IRI, property_: str) -> IRI:
+        """Find `IRI` for property with supplied name
+
+        Where applicable, uses the domain class as a hint.
+
+        If the property is unrecognised, log issue and create new local property.
+
+        :param class_iri: IRI for domain class
+        :param property_: String holding IRI, CURIE or unqualified name for property
+        :return: IRI for property
+        """
+        # Look for properties which include the current class as their
+        # domain. If no such property exists with the specified name, a matching
+        # will be selected from one of the namespaces specified in the settings
+        # (in descending order of precedence).
+
+        iri = self.parse_iri(property_)
+        if iri is not None:
+            return iri
+
+        for iri in self.dictionary.list_domain_properties_for_class(class_iri):
+            if iri.name == property_:
+                return iri
+
+        for s in self.settings.get_vocabulary_column_namespaces():
+            for iri in self.dictionary.list_properties(namespace=s):
+                if iri.name == property_:
+                    return iri
+
+        # TODO - Log unrecognised property
+        iri = self.dictionary.build_iri(RDF_PROPERTY, self.namespace, property_)
+        return iri
+
+    def parse_iri(self, string: str) -> IRI | None:
+        """If the supplied string is an IRI or CURIE, return it as an `IRI` object
+
+        :param string: String that may contain an IRI
+        :return:       `IRI` or None
+        """
+        if string.startswith("http"):
+            return IRI(string)
+
+        parts = string.split(":")
+        if len(parts) == 2 and parts[0] in self.dictionary.get_namespaces():
+            return IRI(string)
+
+        return None
+
+    def seed_name(self, class_iri: IRI) -> str:
+        """Get unique (numeric) name for object within a class
+
+        The name will be prefixed with a class abbreviation before use.
+
+        :param class_iri: Class within which name should be unique
+        :return:          Unique string containing next consecutive number
+        """
+        if class_iri not in self.seeds:
+            self.seeds[class_iri] = 1
+        else:
+            self.seeds[class_iri] = self.seeds[class_iri] + 1
+        return f"{self.seeds[class_iri]:07d}"
+
+
+if __name__ == "__main__":
+    settings = Configuration()
+    crate = Crate(settings, settings.get_organisation_by_id("LTU"), "MicroTom")
+    crate.add(
+        "GrowthFacility",
+        "GH123",
+        {"description": "A greenhouse", "hasGrowthFacilityType": "glasshouse"},
+    )
+    crate.add("GrowthFacility", "GH123", {"lights": "Bright"})
+    crate.add_file(Path("appn.yaml"), "./MyFirstFile.txt", {"created": "2026-09-26"})
+    crate.add_folder(Path("schema_assets"), "./Assets", {"created": "2026-09-26"})
+    crate.add(
+        "Observation",
+        properties={"isForObservationUnit": "GH123", "hasResult": "./MyFirstFile.txt"},
+    )
+    crate.add(
+        "Observation",
+        properties={
+            "isForObservationUnit": "GH123",
+            "hasSimpleResult": 1.2,
+            "observes": "liquid quantity",
+        },
+    )
+    crate.add("ObservedVariable", "liquid quantity", {"hasScale": "milliliter"})
+    crate.add("Scale", "Milliliter")
+    crate.serialise(Path("RO-Crate"), use_tables=True)

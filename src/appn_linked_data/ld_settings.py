@@ -53,6 +53,31 @@ class ExplicitTermsFilter(StrEnum):
     FIRST = "first"
 
 
+### ClassOutputFormat #######################################################
+
+
+class ClassOutputFormat(StrEnum):
+    """Simple class to define whether linked data for a class should be serialised as graph triples, a dataframe or both.
+
+    The `graph` option indicates that all properties should be stored as triples. The
+    `dataframe` option indicates that `pandas`.`DataFrame`s should be used. `both`
+    indicates that both outputs are desired, and `none` suppresses output.
+    """
+
+    GRAPH = "graph"
+    DATAFRAME = "dataframe"
+    BOTH = "both"
+    NONE = "none"
+
+    def use_graph(self) -> bool:
+        """Return True if this `ClassOutputFormat` includes graph storage."""
+        return self in [ClassOutputFormat.GRAPH, ClassOutputFormat.BOTH]
+
+    def use_dataframe(self) -> bool:
+        """Return True if this `ClassOutputFormat` includes dataframe storage."""
+        return self in [ClassOutputFormat.DATAFRAME, ClassOutputFormat.BOTH]
+
+
 ### CompletionRule ############################################################
 
 
@@ -244,8 +269,8 @@ class LinkedDataControlSettings(BaseModel):
     property_range_classes: dict[IRI, dict[IRI, IRI]] = {}
     """Classes that should be inferred whenever a subject class is linked to an object of unknown class by a specified property."""
 
-    ro_crate_table_classes: list[IRI] = []
-    """Classes that should always be converted to CSV in RO-Crates."""
+    formats_for_class_triples: dict[IRI, ClassOutputFormat] = {}
+    """Determines how instances of specified classes should be stored - as `pandas`.`DataFrame`s, graph triples, or both."""
 
     organisations: list[Organisation] = []
     """Metadata for APPN and its nodes."""
@@ -637,15 +662,28 @@ class LinkedDataSettings:
             return property_range_classes[domain_class][property_]
         return None
 
-    def get_ro_crate_table_classes(self) -> list[IRI]:
-        """Get names of classes that should be serialised to CSV tables in RO-Crates.
+    def get_formats_for_class_triples(self) -> dict[IRI, ClassOutputFormat]:
+        """Get output formats specified for classes.
 
-        The named classes are likely to add significantly to the size of the
-        linked-data graph.
+        Classes serialised as triples may add significantly to the size of the
+        linked-data graph, so classes can be configured to write to CSV
+        (via a `pandas`.`DataFrame`) instead.
 
-        :return: List of class names
+        :return: Dictionary mapping class names to formats.
         """
-        return self.settings.ro_crate_table_classes.copy()
+        return self.settings.formats_for_class_triples.copy()
+
+    def get_format_for_class_triples(self, class_iri: IRI) -> ClassOutputFormat:
+        """Get output formats specified for a specific class.
+
+        If the class is in the dictionary from the YAML configuration, return
+        the `ClassOutputFormat`. Otherwise, return `ClassOutputFormat.GRAPH`.
+
+        :return: Output format.
+        """
+        return self.settings.formats_for_class_triples.get(
+            class_iri, ClassOutputFormat.GRAPH
+        )
 
     def get_organisations(self) -> dict[str, Organisation]:
         """Get metadata elements for `Organisation`s defined in schema and for the APPN central organisation.

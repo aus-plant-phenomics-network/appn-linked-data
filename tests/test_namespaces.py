@@ -13,6 +13,7 @@ from appn_linked_data import (
 
 PREFIX_LIST = [
     "appn",
+    "altschema",
     "anu",
     "au",
     "csu",

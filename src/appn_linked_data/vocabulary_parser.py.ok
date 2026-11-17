@@ -1,0 +1,1555 @@
+#!/usr/bin/env python3
+
+"""vocabulary_parser - Generate RDF triples from APPN vocabulary template."""
+
+from __future__ import annotations
+
+import argparse
+import datetime
+import logging
+import re
+import sys
+import textwrap
+import warnings
+from enum import StrEnum
+from pathlib import Path
+from typing import Any, NamedTuple
+
+import numpy as np
+import pandas as pd
+from rdflib import Graph, Literal
+from rdflib.namespace import NamespaceManager
+
+from appn_linked_data.ld_constants import (
+    ALT_SCHEMA_SCHEMA,
+    APPN_SCHEMA,
+    APPN_VOCABULARY,
+    APPN_VOCABULARY_ROOT,
+    BIO_SCHEMA,
+    CENTRAL_ORGANISATION,
+)
+from appn_linked_data.ld_dictionary import (
+    Dictionary,
+)
+from appn_linked_data.ld_iri import (
+    IRI,
+    RDF_PROPERTY,
+    RDF_TYPE,
+    SCHEMA_DESCRIPTION,
+    SCHEMA_DOMAIN_INCLUDES,
+    SCHEMA_NAME,
+    SCHEMA_SCHEMA,
+    SKOS_CONCEPT_SCHEME,
+    SKOS_IN_SCHEME,
+    SKOS_PREF_LABEL,
+    SKOS_SCHEMA,
+    Triple,
+)
+from appn_linked_data.ld_issue import ISSUE_TYPE, IssueHandler, IssueType
+from appn_linked_data.ld_namespaces import NamespaceDefinitionManager
+from appn_linked_data.ld_settings import (
+    LinkedDataSettings,
+    Organisation,
+    ReflexiveCompletionRule,
+)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+### RequiredProperty ###########################################################
+
+
+class ExcelLocation(NamedTuple):
+    """Simple class to document the location of a cell in an Excel spreadsheet.
+
+    :param excel_path: Path to source Excel spreadsheet
+    :param sheet: Name of sheet where the property is defined
+    :param row: Index of row in sheet.
+    """
+
+    path: Path
+    sheet: str
+    row: str
+
+    def __str__(self) -> str:
+        """Format for easy use in log messages."""
+        return f"{self.path} / {self.sheet} / {self.row}"
+
+
+class RequiredProperty(NamedTuple):
+    """Simple class to represent a triple of `IRI`s and associated metadata for a property that is deferred until the object iri is known to have been defined.
+
+    :param subject: `IRI` for the subject of a triple
+    :param property: `IRI` for the property of a triple
+    :param object: `IRI` for the object of a triple
+    :param class_name: Name of the class for the instance
+    :param iri_name: Name for instance from column in row
+    :param excel_location: Documentation of source location in Excel spreadsheet
+    :param column_name: Name of column where the property is defined
+    """
+
+    subject: IRI
+    property: IRI
+    object: IRI
+    class_name: str
+    iri_name: str
+    excel_location: ExcelLocation
+    column_name: str
+
+
+### ColumnMapping##############################################################
+
+
+class ColumnMapping(NamedTuple):
+    """Simple class for metadata associated with a `DataFrame` column.
+
+    :param column: Name of a `DataFrame` column
+    :param property: `IRI` for the property represented by the column
+    :param range_class: `Term` identifying an APPN schema class representing the range if the `property` links two schema instances
+    :param primary_identifier: True if the `property` matches `schema:name` (used to create the IRI as the unique identifier for an instance)
+    :param is_local_property: True if the `property` is to be defined in the current vocabulary namespace
+    """
+
+    column: str
+    property: IRI
+    range_class: IRI | None
+    primary_identifier: bool
+    is_local_property: bool
+
+
+### ExcelVocabularyParser #####################################################
+
+
+class ExcelVocabularyParser:
+    """Parser class to parse Excel representations of the APPN-Schema-compliant term definitions from an APPN node and generate a corresponding rdflib `Graph` representation.
+
+    The parser constructs a valid vocabulary of APPN Schema instances (doubling as
+    SKOS concepts) for a specified APPN node or for common definitions shared
+    across all APPN nodes. Each node vocabulary has its own namespace.
+
+    The `load` method imports all recognised sheets from a supplied Excel
+    spreadsheet into the `Graph`.
+
+    Multiple spreadsheets may consecutively be parsed into the same `Graph`. This
+    is intended as a convenience so APPN nodes can manage definitions in the most
+    convenient way. It is the responsibility of the user of this parser to ensure
+    that all parsed spreadsheets relate to the same node.
+
+    The parser scans each Excel spreadsheet for sheets with names that match the
+    (unqualified) name of an APPN schema class (e.g. "Trait", "GrowthFacility").
+
+    The behaviour of the parser is controlled by the settings in a supplied
+    `LinkedDataSettings` object and by the content of a `Dictionary` object initialised
+    using the `LinkedDataSettings`. The `Dictionary` includes all definitions from the
+    APPN Schema and from the schemas it directly references and from the SKOS Core
+    schema. Additionally, except in the case of the all-APPN vocabulary, the
+    `Dictionary` includes the current all-APPN vocabulary and preferentially
+    uses definitions it contains instead of creating new ones in the namespace of
+    the node vocabulary.
+
+    The first row in each such sheet is parsed as a set of references to RDF
+    properties or to another APPN schema class that is to be linked by a
+    predictable RDF property. The name in each cell is matched to a property using
+    the first matching strategy from the following:
+
+    1. A property that includes the current schema class in its domain.
+
+    2. A property from a namespace returned by the `get_vocabulary_column_namespaces`
+       method of the `LinkedDataSettings` instance. This is expected to include
+       schema.org, SKOS Core and Dublin Core, but others may be included.
+
+    3. If the name in the cell matches another APPN Schema class name, a property
+       that includes the current schema class in its domain and the matched class
+       name in its range. (In this case, values in the column will be names of
+       instances of the matched class). NOTE: At present, there are no ambiguous
+       situations where multiple properties match these conditions, but this may
+       change.
+
+    4. If the `get_embedded_classes` method of the `LinkedDataSettings` instance includes
+       the name of an APPN Schema class that matches the start of the name in the
+       cell (with the first letter lowered), the remainder of name in the cell is
+       processed as a candidate property for the matched class using steps 1 to 3.
+       Any columns matching this rule are treated as a discrete set that could
+       have been specified in a separate sheet dedicated to the matching class.
+
+    5. A new property created in the namespace of the node vocabulary and specifying
+       the current schema class as part of its domain.
+
+    The parser accommodates repetition of the same property name in multiple
+    columns. Internally, it renames these temporarily as <property_name><integer>
+    so they can appear as discrete columns in a pandas DataFrame. During all later
+    processing stages, the integer suffix is ignored.
+
+    Each subsequent row in the sheet is parsed as an instance of the specified
+    schema class. The instance receives an IRI constructed from an identifier for
+    the APPN node and a normalised version of the value in a column associated
+    with the `schema:name` property. All non-blank cells are interpreted as the
+    object value (a `Literal` or a `IRI`) for a triple relating to the
+    instance. If an instance of the class is already known with the same name
+    (in any namespace, more specifically in the all-APPN vocabulary namespace),
+    the new record is treated as a duplicate and ignored. Columns matched using
+    step 4 above (i.e. via an "embedded class") are processed as though they
+    are in a separate sheet, but the "<embedded_class>Name" column is also used
+    to create a property for the current schema class (using the logic in step
+    3).
+
+    Options from the `LinkedDataSettings` allow the output to be tweaked in the
+    following ways:
+
+        `LinkedDataSettings`.`get_vocabulary_column_namespaces`:
+            Determines which namespaces are searched to map column names to
+            properties.
+
+        `LinkedDataSettings`.`get_explicit_classes`:
+            Inserts additional `rdf:type` properties when an instance of a
+            specified class is created.
+
+        `LinkedDataSettings`.`get_excluded_classes`:
+            Excludes some classes from coarse selections by
+            `get_explicit_classes`.
+
+        `LinkedDataSettings`.`get_sheet_aliases`:
+            Overrides the name of a sheet to match a desired APPN schema
+            class
+
+        `LinkedDataSettings`.`get_column_aliases`:
+            Overrides the name of a column to match a different property
+
+        `LinkedDataSettings`.`get_completion_rules`:
+            Specifies additional processing for instances of an APPN
+            schema class
+
+        `LinkedDataSettings`.`get_embedded_classes`:
+            Lists classes that may appear as specified in step 4 above
+
+        `LinkedDataSettings`.`get_domain_range_properties`:
+            Get properties to use when linking primary class instances to
+            embedded class instances
+
+    The constructed `Graph` is separate from the `Graph` in the `Dictionary`
+    of loaded schema assets. It is accessed using the `get_graph` method.
+
+    Issues requiring the attention of a data administrator are stored using
+    the `IssueLogger` in the `LinkedDataSettings`.
+    """
+
+    def __init__(
+        self, node: Organisation, appn_vocabulary_location: Path | None = None
+    ) -> None:
+        """Initialise parser to convert standard Excel spreadsheets into RDF vocabulary.
+
+        :param node: Definition of the APPN node (or APPN central office) for which the vocabulary is defined.
+        """
+        self.settings = LinkedDataSettings()
+        self.node = node
+        appn = self.settings.get_appn()
+
+        # The rdflib library generates a warning ("ConjunctiveGraph is deprecated, use Dataset instead")
+        warnings.filterwarnings("ignore", category=DeprecationWarning, module="rdflib")
+
+        # The openpyxl library generates a warning ("Data Validation extension is not supported and will be removed")
+        warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
+
+        # Load schemas that provide key definitions. APPN_SCHEMA does not
+        # directly reference SKOS, so SKOS_SCHEMA is separately loaded, but
+        # others are imported based on their use in these two schemas.
+        # For any vocabulary other than the central APPN vocabulary, load
+        # the central vocabulary so its terms can be checked.
+        self.dictionary = Dictionary()
+        self.dictionary.load(APPN_SCHEMA)
+        self.dictionary.load(SKOS_SCHEMA)
+        if node.id != CENTRAL_ORGANISATION:
+            self.dictionary.load(
+                appn.namespace,
+                asset_prefix=appn.prefix,
+                asset_path=appn_vocabulary_location,
+            )
+        self.dictionary.import_references()
+
+        # Cache local copies of self.settings outputs
+        self.sheet_aliases = self.settings.get_sheet_aliases()
+        self.column_aliases = self.settings.get_column_aliases()
+        self.class_abbreviations = self.settings.get_class_abbreviations()
+        self.embedded_classes = self.settings.get_embedded_classes()
+        self.domain_range_properties = self.settings.get_domain_range_properties()
+
+        # List of classes known from APPN schema (keyed by unqualified
+        # iri)
+        self.appn_classes = self.dictionary.list_classes(namespace=APPN_SCHEMA)
+
+        # Dictionary for classes known from APPN schema (keyed by unqualified
+        # name)
+        self.appn_classes_by_name = {
+            class_.name: class_ for class_ in self.appn_classes
+        }
+
+        # Set to keep track of RDF objects already created
+        self.instances: set[IRI] = set()
+
+        # A separate SKOS `ConceptScheme`` is created for the instances of each
+        # APPN schema class. This maps the IRIs for the APPN classes to the
+        # IRI for the associated `ConceptScheme`
+        self.concept_schemes: dict[IRI, IRI] = {}
+
+        # Properties linking an APPN schema instance to another APPN schema
+        # instance are set aside (as "required properties") until all sheets
+        # have been processed. This provides a simple way to detect and report
+        # on any undefined IRIs.
+        self.required_properties: list[RequiredProperty] = []
+
+        # Definitions for new "local" properties (in the same namespace as the
+        # generated RDF vocabulary) are deferred until a row is encountered
+        # that actually includes data for the property. This avoids the
+        # creation of properties that are never used.
+        self.deferred_local_properties: dict[IRI, list[IRI]] = {}
+
+        # External code should only access the vocabulary graph via the
+        # `get_graph` method which ensures that any processing for required
+        # properties has been carried out
+        self._graph = Graph()
+
+        # Force selection of HTTP/HTTPS for schema.org to match imported
+        # assets and RO-Crate expectations
+        namespace_manager = NamespaceManager(self._graph)
+        namespace_definitions = NamespaceDefinitionManager().get_namespace_dictionary()
+        namespace_manager.bind(
+            namespace_definitions[ALT_SCHEMA_SCHEMA].prefix, ALT_SCHEMA_SCHEMA
+        )
+        namespace_manager.bind(
+            namespace_definitions[SCHEMA_SCHEMA].prefix, SCHEMA_SCHEMA
+        )
+
+        # Ensure the vocabulary graph uses the preferred namespace prefixes
+        self._graph.bind(appn.prefix, appn.namespace, override=True)
+        self._graph.bind(
+            namespace_definitions[APPN_SCHEMA].prefix, APPN_SCHEMA, override=True
+        )
+        self._graph.bind(namespace_definitions[BIO_SCHEMA].prefix, BIO_SCHEMA)
+        if self.node.id != CENTRAL_ORGANISATION:
+            self._graph.bind(appn.prefix, appn.namespace)
+
+        # Regular expression for removing trailing integers added to column
+        # names to enable multiple columns to represent the same RDF property
+        self.integer_stripper = re.compile(r"[0-9]*$")
+
+    def load(self, excel_path: Path) -> bool:
+        """Load APPN schema vocabulary terms from Excel spreadsheet.
+
+        Identifies sheets with names matching the name of an APPN schema class OR
+        mapped to an APPN schema class by `sheet_aliases` from the `LinkedDataSettings`.
+
+        :param excel_path: Location of a vocabulary stored as a multi-sheet Excel spreadsheet
+        :return: True if the spreadsheet was loaded without issues that need correction
+        """
+        if not excel_path.exists():
+            logger.error(
+                "Excel path %s invalid",
+                excel_path,
+                extra={ISSUE_TYPE: IssueType.EXCEL_PATH_INVALID},
+            )
+            return False
+
+        success = True
+
+        for sheet in pd.ExcelFile(excel_path).sheet_names:
+            # Process any sheet with a name matching an APPN schema class name OR
+            # mapped to a class name using `sheet_aliases`
+            sheet_class = self.sheet_aliases.get(sheet, sheet)
+            if sheet_class in self.appn_classes_by_name:
+                class_ = self.appn_classes_by_name[sheet_class]
+
+                if not self.process_sheet(excel_path, sheet, class_):
+                    success = False
+
+        return success
+
+    def process_sheet(self, excel_path: Path, sheet: str, sheet_class: IRI) -> bool:
+        """Load APPN schema vocabulary terms from single sheet of an Excel spreadsheet.
+
+        Builds maps of the class instances that can be parsed from this sheet and then
+        parses all available instances
+
+        :param excel_path: Location of a vocabulary stored as a multi-sheet Excel spreadsheet
+        :param sheet: Name of the sheet to be processed
+        :param sheet_class: `IRI` for the main APPN schema class for which instances are to be generated
+        :return: True if the sheet was loaded without issues that need correction
+        """
+        success = True
+
+        # Read sheet with column headings as first row - this allows for multiple
+        # columns for the same property to share the same heading
+        df = pd.read_excel(excel_path, sheet_name=sheet, header=None, dtype="str")
+        if df is None or len(df.index) == 0:
+            logger.error(
+                "Excel sheet %s in %s unreadable",
+                sheet,
+                excel_path,
+                extra={ISSUE_TYPE: IssueType.EXCEL_SHEET_INVALID},
+            )
+            return False
+
+        # Assign column names based on first row (and remove first row)
+        df = self.fix_dataframe_columns(df)
+
+        # Get a list of `IRIs` for `embedded_classes` (from `LinkedDataSettings`) - schema
+        # classes that may be "embedded" in a sheet for this `sheet_class`
+        embeddings: list[IRI] = []
+        if sheet_class in self.embedded_classes:
+            embeddable_classes = self.embedded_classes[sheet_class]
+            for c in embeddable_classes:
+                if c in self.appn_classes:
+                    embeddings.append(c)
+
+        # Build maps associating columns with RDF properties for the `sheet_class` and
+        # any embedded classes, and process the sheet to extract instances based on
+        # each of these maps
+        for target_class, column_mappings in self.build_class_maps(
+            excel_path, sheet, df, sheet_class, embeddings
+        ).items():
+            property_string = "".join(
+                [
+                    f"  {m.column} --> {m.property} ({m.range_class.curie if m.range_class is not None else 'None'}, {m.primary_identifier})\n"
+                    for m in column_mappings
+                ]
+            )
+            logger.debug("Mapping for %s\n\n%s", target_class.curie, property_string)
+            if not self.parse_rows(
+                excel_path, sheet, df, target_class, column_mappings
+            ):
+                success = False
+
+        return success
+
+    def fix_dataframe_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Load APPN schema vocabulary terms from single sheet of an Excel spreadsheet.
+
+        Interpret first row of dataframe as column names while allowing for some
+        columns to share the same name - these are mapped to columns with the name
+        suffixed with consecutive integers. Once the columns have been named, the
+        first row is discarded.
+
+        :param df: `DataFrame` with unprocessed column headings in first row
+        :return: `DataFrame` with columns renamed and first row removed
+        """
+        column_name_matches: dict[str, int] = {}
+        columns: list[str] = []
+        for heading in df.loc[0, :].array:
+            column_name = self.integer_stripper.sub("", heading.strip())
+            if column_name not in column_name_matches:
+                column_name_matches[column_name] = 0
+            else:
+                column_name_matches[column_name] = column_name_matches[column_name] + 1
+                column_name = f"{column_name}{column_name_matches[column_name]}"
+            columns.append(column_name)
+        df.columns = columns
+        return df.drop(0)
+
+    def build_class_maps(
+        self,
+        excel_path: Path,
+        sheet: str,
+        df: pd.DataFrame,
+        primary_class: IRI,
+        embeddings: list[IRI],
+    ) -> dict[IRI, list[ColumnMapping]]:
+        """Provide mappings between column names and RDF properties.
+
+        Generates a list of column to property mappings for each of the classes
+        identified by `primary_class` or by `embeddings`
+
+        :param excel_path: Location of a vocabulary stored as a multi-sheet Excel spreadsheet
+        :param sheet: Name of the sheet to be processed
+        :param df: `DataFrame` to be mapped
+        :param primary_class: `IRI` for an APPN schema class for which all columns will be processed unless the column name is based on one of the embedded class names
+        :param embeddings: list of `IRI`s for APPN schema classes which may be included in the sheet via column names including a modified version of the class name
+        :return: Dictionary mapping class `IRI`s to lists of `appn_types`.`ColumnMapping` objects
+        """
+        class_maps: dict[IRI, list[ColumnMapping]] = {}
+
+        # For the primary class, map any column with a name starting with an
+        # empty string (i.e. all columns) unless the column name also starts
+        # with a lower-first version of the name of one of the embedded classes
+        # Any name of the form "<lower-first embedded class name>Name" is a
+        # special case and is mapped to "<embedded class name>" since this will
+        # then be handled as a property with the primary class in its domain
+        # and the embedded class in its range
+        class_map = self.build_class_map(
+            excel_path,
+            sheet,
+            df,
+            primary_class,
+            "",
+            [self.lower_first(e.name) for e in embeddings],
+        )
+        if class_map is not None:
+            class_maps[primary_class] = class_map
+
+        # For each embedding class, map only columns that start with a lower-first
+        # version of the class name
+        for embedding in embeddings:
+            class_map = self.build_class_map(
+                excel_path, sheet, df, embedding, self.lower_first(embedding.name), []
+            )
+            if class_map is not None:
+                class_maps[embedding] = class_map
+
+        return class_maps
+
+    def build_class_map(
+        self,
+        excel_path: Path,
+        sheet: str,
+        df: pd.DataFrame,
+        target_class: IRI,
+        required_prefix: str,
+        excluded_prefixes: list[str],
+    ) -> list[ColumnMapping] | None:
+        """Provide mappings between column names and RDF properties for a single APPN schema class.
+
+        Generates a list of column to property mappings for `target_class`
+
+        :param excel_path: Location of a vocabulary stored as a multi-sheet Excel spreadsheet
+        :param sheet: Name of the sheet to be processed
+        :param df: `DataFrame` to be mapped
+        :param target_class: `IRI` for an APPN schema class for which the column mapping will be developed
+        :param required_prefix: Only column names starting with this string will be processed
+        :param excluded_prefixes: Column names starting with any of these strings will not be processed unless the remainder of the column name is "Name"
+        :return: List of `appn_types`.`ColumnMapping` objects for any mapped columns or None if no columns have been mapped
+        """
+        # The `name_column` serves as the unique identifier for instances of this class
+        # in this vocabulary - it is processed to generate the IRI for the instance
+        name_column = self.lower_first(f"{required_prefix}Name")
+        if name_column not in df.columns:
+            logger.info(
+                "Sheet does not include a name column %s - ignoring sheet for class %s",
+                name_column,
+                target_class.curie,
+                extra={ISSUE_TYPE: IssueType.NO_NAME_COLUMN_FOR_CLASS},
+            )
+            return None
+        logger.debug("Handling rows as instances of %s", target_class.curie)
+
+        # Build dictionary of candidate properties for the class. Preference those with
+        # the class as the domain, processing them in the returned order (which starts
+        # with properties for the APPN class and proceeds up the superclass chain), and
+        # then include in descending priority properties from schema.org, SKOS or Dublin
+        # Core. If a property with the name has already been found, do not overwrite it.
+        properties = {}
+
+        # Columns will be handled as properties which include the current class as their
+        # domain. If no such property exists with the specified name, a matching
+        # will be selected from one of the namespaces specified in the settings
+        # (in descending order of precedence). This code builds a map of unqualified
+        # property names to the preferred property. A clean map is created for each
+        # sheet in the spreadsheet since the domain properties vary by class.
+        for class_property in self.dictionary.list_domain_properties_for_class(
+            target_class
+        ):
+            if class_property.name not in properties:
+                properties[class_property.name] = class_property
+        for namespace in self.settings.get_vocabulary_column_namespaces():
+            for namespace_property in self.dictionary.list_properties(
+                namespace=namespace
+            ):
+                if namespace_property.name not in properties:
+                    properties[namespace_property.name] = namespace_property
+
+        # Get property class mappings for this class
+        configured_range_classes = self.settings.get_property_range_classes()
+        property_range_classes = configured_range_classes.get(target_class, {})
+
+        # Build dictionary of property IRIs for each column.
+        column_mappings = []
+
+        # Map each relevant column name to a property
+        for column in df.columns:
+            # Required prefix is an empty string for the main class on each sheet.
+            if column.startswith(required_prefix):
+                # column_name will be manipulated to get the name for the
+                # property
+                column_name = column
+
+                # Exclude any columns with names starting with an excluded
+                # prefix EXCEPT for columns with names of the form
+                # "<excluded_prefix>Name" - these should be treated as
+                # properties linking to an instance of the class indicated by
+                # the prefix. This section causes any embedded class columns
+                # to be ignored while processing the main class. A column
+                # with a name of the form "excluded_prefix>Name" should be
+                # retained and later mapped to a property with the corresponding
+                # range class.
+                ignore_column = False
+                for excluded_prefix in excluded_prefixes:
+                    if column_name.startswith(excluded_prefix):
+                        if column_name == f"{excluded_prefix}Name":
+                            column_name = self.upper_first(excluded_prefix)
+                        else:
+                            ignore_column = True
+                            break
+                if not ignore_column:
+                    # Remove any integer suffix present in the Excel spreadsheet
+                    column_name = self.integer_stripper.sub("", column_name.strip())
+
+                    # Remove any required prefix and lower the first letter of the
+                    # remainder to get the name for the property
+                    if len(required_prefix) > 0 and column_name.startswith(
+                        required_prefix
+                    ):
+                        column_name = self.lower_first(
+                            column_name[len(required_prefix) :]
+                        )
+
+                    # `LinkedDataSettings` may supply `column_aliases` to override how this
+                    # column is to be processed
+                    if column_name in self.column_aliases:
+                        column_name = self.column_aliases[column_name]
+
+                    # This column will be mapped to the `IRI` for a property
+                    column_property = None
+
+                    # If the object of the triples represented by this column is expected
+                    # to be a class instance, record the expected class
+                    related_class = None
+
+                    # The simple case is when the column name matches a property already
+                    # identified for this class
+                    if column_name in properties:
+                        column_property = IRI(properties[column_name].iri)
+
+                        # If the column_property is included in the property range
+                        # classes from the settings, expect the column to contain
+                        # references to instances of the specified class
+                        if column_property in property_range_classes:
+                            related_class = IRI(property_range_classes[column_property])
+
+                        else:
+                            # If the property itself has a specified range, expect the
+                            # column to contain references to instances of the class in
+                            # question
+                            range_classes = (
+                                self.dictionary.list_range_classes_for_property(
+                                    column_property, APPN_SCHEMA
+                                )
+                            )
+                            if len(range_classes) == 1:
+                                related_class = range_classes[0]
+                            elif len(range_classes) > 1:
+                                logger.error(
+                                    "Class cannot be determined as range for values in column %s of sheet %s of %s, interpreted as property %s for subjects in class %s",
+                                    column,
+                                    sheet,
+                                    excel_path,
+                                    properties[column_name].curie,
+                                    target_class.curie,
+                                    extra={
+                                        ISSUE_TYPE: IssueType.RANGE_CLASS_NOT_SELECTED
+                                    },
+                                )
+
+                    # Otherwise, if the column name matches the name of an APPN schema
+                    # class, the column should be mapped to a property including the
+                    # correct classes in the domain and range
+                    elif column_name in self.appn_classes_by_name:
+                        related_class = self.appn_classes_by_name[column_name]
+                        # A property may be specified in the `LinkedDataSettings`
+                        if (
+                            target_class in self.domain_range_properties
+                            and related_class
+                            in self.domain_range_properties[target_class]
+                        ):
+                            column_property = IRI(
+                                self.domain_range_properties[target_class][
+                                    related_class
+                                ]
+                            )
+                        # Otherwise try to find a unique match based on domain and range
+                        else:
+                            range_properties = (
+                                self.dictionary.list_properties_by_domain_and_range(
+                                    target_class.iri,
+                                    related_class.iri,
+                                    namespace=APPN_SCHEMA,
+                                )
+                            )
+                            if len(range_properties) == 1:
+                                column_property = IRI(range_properties[0].iri)
+                        if column_property is None:
+                            # Notify the data administrator to add to settings.
+                            logger.error(
+                                "Property not selected for column %s in sheet %s of %s with domain class %s and range class %s",
+                                column,
+                                sheet,
+                                excel_path,
+                                target_class.curie,
+                                related_class.curie,
+                                extra={
+                                    ISSUE_TYPE: IssueType.COLUMN_PROPERTY_NOT_SELECTED
+                                },
+                            )
+                            related_class = None
+
+                    # If no matching property has been identified, define one for creation
+                    # when required
+                    if column_property is None:
+                        # Local properties are those that do not exist in the `Dictionary` and that
+                        # therefore need to be defined with the vocabulary - defer creating the
+                        # property until a row contains an actual value for it
+                        is_local_property = True
+
+                        column_property = IRI(
+                            f"{APPN_VOCABULARY_ROOT}{self.node.id}/{self.lower_first(column_name)}"
+                        )
+                        is_local_property = True
+                        if column_property not in self.deferred_local_properties:
+                            self.deferred_local_properties[column_property] = []
+                        if (
+                            target_class
+                            not in self.deferred_local_properties[column_property]
+                        ):
+                            self.deferred_local_properties[column_property].append(
+                                target_class
+                            )
+                    else:
+                        is_local_property = False
+
+                    logger.info(
+                        "Column %s recognised as %s for class %s",
+                        column,
+                        str(column_property),
+                        target_class.curie,
+                    )
+
+                    column_mappings.append(
+                        ColumnMapping(
+                            column,
+                            column_property,
+                            related_class,
+                            column == name_column,
+                            is_local_property,
+                        )
+                    )
+        return column_mappings if len(column_mappings) > 0 else None
+
+    def parse_rows(
+        self,
+        excel_path: Path,
+        sheet: str,
+        df: pd.DataFrame,
+        target_class: IRI,
+        column_mappings: list[ColumnMapping],
+    ) -> bool:
+        """Generate APPN schema class instances from `DataFrame` loaded from Excel spreadsheet.
+
+        Uses supplied column mappings and `LinkedDataSettings` settings to generate class instances
+        as RDF triples
+
+        :param excel_path: Location of a vocabulary stored as a multi-sheet Excel spreadsheet
+        :param sheet: Name of the sheet to be processed
+        :param df: `DataFrame` to be processed
+        :param target_class: `IRI` for APPN schema class for instances to generate
+        :param column_mappings: List of `ColumnMapping` objects for mapped columns
+        :return: True if the sheet was processed without issues that need correction
+        """
+        success = True
+
+        # Find the column that will be used for constructing IRIs (and hence which will
+        # need to hold unique values)
+        name_column = None
+        for mapping in column_mappings:
+            if mapping.primary_identifier:
+                name_column = mapping.column
+                break
+        if name_column is None:
+            logger.error(
+                "Sheet %s of %s does not include a name column for class %s",
+                sheet,
+                excel_path,
+                target_class.curie,
+                extra={ISSUE_TYPE: IssueType.NO_NAME_COLUMN_FOR_CLASS},
+            )
+            return False
+
+        # Process all rows with values in the name_column column
+        index = 1
+        for _, row in df.iterrows():
+            if (
+                row[name_column] not in [np.nan, None]
+                and row[name_column].strip() != ""
+            ):
+                name = str(row[name_column])
+
+                # Only proceed if this vocabulary is for the central organisation
+                # or if the given name does not already exist among instances of
+                # this class in the vocabulary for the central organisation.
+                # Central definitions override node definitions.
+                if (
+                    self.node.id == CENTRAL_ORGANISATION
+                    or len(
+                        self.dictionary.list_instances_by_class_and_name(
+                            target_class, name, namespace=APPN_VOCABULARY
+                        )
+                    )
+                    == 0
+                ) and not self.add_instance(
+                    ExcelLocation(excel_path, sheet, str(index)),
+                    row,
+                    target_class,
+                    name_column,
+                    name,
+                    column_mappings,
+                ):
+                    success = False
+            index += 1
+
+        return success
+
+    def add_instance(
+        self,
+        excel_location: ExcelLocation,
+        row: pd.Series,
+        target_class: IRI,
+        name_column: str,
+        name: str,
+        column_mappings: list[ColumnMapping],
+    ) -> bool:
+        """Generate triples from a spreadsheet row.
+
+        Generates an IRI and specifies its types, processes all `ColumnMapping`s
+        for this row, notes any related class instances that are expected before
+        processing is complete, and runs any completion rules defined in the
+        `LinkedDataSettings`
+
+        :param excel_path: Location of a vocabulary stored as a multi-sheet Excel spreadsheet
+        :param sheet: Name of the sheet to be processed
+        :param index: String representation of row number (starting at 1)
+        :param row: `Series` (i.e row) to be processed as an instance defined by a set of RDF triples
+        :param target_class: `IRI` for APPN schema class for instances to generate
+        :param name_column: the name of the column in the `Series` that contains the name for the instance
+        :param name: the name for the instance
+        :param column_mappings: List of `ColumnMapping` objects for mapped columns
+        :return: True if the row was processed without issues that need correction
+        """
+        # If the instance is already known (normally from the centrat APPN
+        # vocabulary), just return immediately.
+        current_instance = self.find_known_instance(target_class, name)
+        if current_instance is not None:
+            return True
+
+        # The IRI for this instance is based on the node, the class and the name
+        iri = self.dictionary.build_iri(target_class, self.node.namespace, name)
+        if iri in self.instances:
+            # We already have a defined instance with this IRI.
+            #
+            # If the instance comes from a sheet dedicated to the class
+            # (in which case the name_column will simply be "name"), log
+            # a failure.
+            #
+            # Otherwise, warn that only the first definition will be used.
+            # NOTE: It would be possible to compare the rows in question
+            # and only report a warning if they are different, but this
+            # approach allows a user to leave all columns blank in the
+            # second and subsequent references.
+            if name_column == "name":
+                logger.error(
+                    "Excel sheet %s in %s contains duplicates for the name %s in columne %s",
+                    excel_location.sheet,
+                    excel_location.path,
+                    name_column,
+                    name,
+                    extra={ISSUE_TYPE: IssueType.SHEET_CONTAINS_DUPLICATE_NAMES},
+                )
+                return False
+            logger.info(
+                "Excel sheet %s of %s contains multiple entries for the class %s sharing the name %s - only the first will be processed",
+                excel_location.sheet,
+                excel_location.path,
+                target_class,
+                name,
+                extra={ISSUE_TYPE: IssueType.SHEET_CONTAINS_DUPLICATE_EMBEDDED_NAMES},
+            )
+            return True
+
+        # Add the type statements for the IRI to the graph and put it in a `ConceptScheme`
+        iri = self.insert_instance(IRI(target_class.iri), iri, True)
+
+        self.add_instance_properties(
+            excel_location, row, column_mappings, name_column, target_class, iri
+        )
+
+        return self.run_completion_rules(target_class, iri)
+
+    def add_instance_properties(
+        self,
+        excel_location: ExcelLocation,
+        row: pd.Series,
+        column_mappings: list[ColumnMapping],
+        name_column: str,
+        target_class: IRI,
+        instance_iri: IRI,
+    ) -> bool:
+        """Process all properties for new IRI.
+
+        :param excel_location: Position of row for instance in Excel spreadsheet
+        :param row: `Series` (i.e row) to be processed as an instance defined by a set of RDF triples
+        :param column_mappings: List of `ColumnMapping` objects for mapped columns
+        :param name_column: the name of the column in the `Series` that contains the name for the instance
+        :param target_class: `IRI` for APPN schema class for instances to generate
+        :param instance_iri: IRI for the instance being added
+        :return: True if processed without issues
+        """
+        # Add properties for each mapped column with a non-null value
+        for column_mapping in column_mappings:
+            value = row[column_mapping.column]
+            if value not in [np.nan, None, ""]:
+                value = str(value)
+                property_term = column_mapping.property
+
+                # Locally defined properties are only added as the first triple is
+                # created using the property
+                if (
+                    column_mapping.is_local_property
+                    and property_term in self.deferred_local_properties
+                ):
+                    self.add_local_property(
+                        excel_location,
+                        property_term,
+                        column_mapping.column,
+                        self.deferred_local_properties[property_term],
+                    )
+                    self.deferred_local_properties.pop(property_term)
+
+                # For properties with a class instance as the expected range, the
+                # value in the column will be the name of a class instance, either in
+                # the current namespace or in the APPN central namespace.
+                if column_mapping.range_class is not None and not value.startswith(
+                    "http"
+                ):
+                    # If a centrally defined instance exists with this name, the triple
+                    # should reference it.
+                    matching_term = None
+                    if self.node.id != CENTRAL_ORGANISATION:
+                        matching_term = self.find_known_instance(
+                            column_mapping.range_class, str(value)
+                        )
+                        if matching_term is not None:
+                            self.add_triple(instance_iri, property_term, matching_term)
+
+                    # If there is no centrally defined instance, document the fact that
+                    # we expect such an instance to be created. By deferring the addition
+                    # of the triple for this column, we are able to report any missing
+                    # instances that are expected.
+                    if matching_term is None:
+                        self.required_properties.append(
+                            RequiredProperty(
+                                instance_iri,
+                                property_term,
+                                self.dictionary.build_iri(
+                                    column_mapping.range_class,
+                                    self.node.namespace,
+                                    str(value),
+                                ),
+                                excel_location,
+                                column_mapping.column,
+                                column_mapping.range_class.curie,
+                                str(value),
+                            )
+                        )
+                else:
+                    # For all properties that do not have a range class, create a new
+                    # triple with a IRI or Literal value
+                    if isinstance(value, str) and value.startswith("http"):
+                        value_term = IRI(value.strip())
+                    else:
+                        value_term = Literal(value)
+                    self.add_triple(instance_iri, property_term, value_term)
+                    if name_column == column_mapping.column:
+                        self.add_triple(
+                            instance_iri,
+                            SKOS_PREF_LABEL,
+                            Literal(f"{value} ({target_class})"),
+                        )
+
+        return True
+
+    def run_completion_rules(self, target_class: IRI, instance_iri: IRI) -> bool:
+        """Process any rules configured to complete instances of the target class.
+
+        Logic should be added here for any special rules requires to complete
+        instances. New CompletionRule subclasses should be added as required.
+
+        :param target_class: The class to which the instance belongs.
+        :param instance_iri: The instance to be validated and completed.
+        :return: True if completed successfully.
+        """
+        # Get any rules from the `LinkedDataSettings` for completing instances of this class
+        # and process these by type.
+        completion_rules = self.settings.get_completion_rules_for_class(target_class)
+        if len(completion_rules) > 0:
+            existing_properties = [
+                str(p) for s, p, o in self._graph if s == instance_iri
+            ]
+            for rule in completion_rules:
+                # Current rules are expected to fire only of no instance of the desired
+                # property is found - this could be controlled by additional rule
+                # properties
+                if isinstance(rule, ReflexiveCompletionRule):
+                    if rule.reflexive_property not in existing_properties:
+                        # Rules with the type "reflexive" indicate that the IRI should have
+                        # a reflexive property linking it to itself.
+                        logger.debug(
+                            "Completing iri %s with property %s using rule %s",
+                            instance_iri,
+                            rule.reflexive_property,
+                            rule,
+                        )
+                        self.add_triple(
+                            instance_iri, IRI(rule.reflexive_property), instance_iri
+                        )
+                else:
+                    logger.error(
+                        "CompletionRule type %s not recognised/handled for class %s",
+                        type(rule),
+                        target_class.curie,
+                    )
+                    return False
+
+        return True
+
+    def insert_instance(
+        self, main_class: IRI, iri: IRI, is_concept: bool | None = False
+    ) -> IRI:
+        """Add an IRI to the graph.
+
+        Inserts type statements (including superclasses specified in the `LinkedDataSettings`)
+        for an IRI and optionally adds it to a SKOS ConceptScheme
+
+        :param main_class: `IRI` for APPN schema class for instance identified by IRI
+        :param iri: the name of the column in the `Series` that contains the name for the instance
+        :param is_concept: If True, the IRI will be added to a SKOS ConceptScheme
+            associated with the main_class
+        :return: The inserted IRI
+        """
+        # Avoid adding the instance multiple times
+        if iri in self.instances:
+            return iri
+
+        # Add type statements for the main class and any superclasses specified by the
+        # `LinkedDataSettings` (and `skos:Concept` if `is_concept` is True).
+        for instance_class in self.dictionary.list_explicit_classes(
+            main_class, is_concept
+        ):
+            self._graph.add((iri, RDF_TYPE, instance_class))
+
+        # Add any `Concept` to a corresponding `ConceptScheme`
+        if is_concept:
+            if main_class not in self.concept_schemes:
+                self.add_concept_scheme(main_class)
+            self._graph.add((iri, SKOS_IN_SCHEME, self.concept_schemes[main_class]))
+
+        self.instances.add(iri)
+
+        return iri
+
+    def add_concept_scheme(self, main_class: IRI) -> IRI:
+        """Add triples defining a SKOS `ConceptScheme`.
+
+        Inserts an IRI with type skos:ConceptScheme and gives it a name and description.
+
+        :param main_class: `IRI` for APPN schema class for instances associated with `ConceptScheme`
+        :return: The concept scheme IRI
+        """
+        # Avoid adding the scheme multiple times
+
+        if main_class in self.concept_schemes:
+            return self.concept_schemes[main_class]
+
+        if main_class in self.appn_classes:
+            class_name = main_class.name
+        else:
+            class_name = str(main_class)
+        concept_scheme_term = self.dictionary.build_iri(
+            SKOS_CONCEPT_SCHEME, self.node.namespace, class_name
+        )
+        self.insert_instance(SKOS_CONCEPT_SCHEME, concept_scheme_term)
+        self.add_triple(concept_scheme_term, SCHEMA_NAME, Literal(class_name))
+        appn = self.settings.get_appn()
+        if self.node == appn:
+            description = f"Concept scheme including instances of the {class_name} class from the {appn.name}"
+        else:
+            description = f"Concept scheme including instances of the {class_name} class from the {self.node.name} node of the {appn.name}"
+        self.add_triple(
+            concept_scheme_term,
+            SCHEMA_DESCRIPTION,
+            Literal(description),
+        )
+
+        self.concept_schemes[main_class] = concept_scheme_term
+
+        return concept_scheme_term
+
+    def add_triple(self, subject_: IRI, property_: IRI, object_: IRI | Literal) -> None:
+        """Add a triple to the graph with any specified additions.
+
+        Insert the requested triple, plus additional triples for any properties
+        indicated by the `explicit_properties` from the `Dictionary`
+
+        :param subject: The subject for the triple
+        :param property: The main property for the triple
+        :param object: The object for the triple
+        """
+        for p in self.dictionary.list_explicit_properties(property_):
+            self._graph.add((subject_, p, object_))
+
+    def add_local_property(
+        self,
+        excel_location: ExcelLocation,
+        iri: IRI,
+        name: str,
+        domain_classes: list[IRI],
+    ) -> None:
+        """Add a new RDF `Property` to the graph in the current namespace.
+
+        Create the property with the supplied name and domain classes.
+
+        :param excel_path: Location of a vocabulary stored as a multi-sheet Excel spreadsheet
+        :param sheet: Name of the sheet to be processed
+        :param property: IRI for the property
+        :param name: Name for the property
+        :param domain_classes: List of classes to be included in the property domain
+        """
+        self.insert_instance(RDF_PROPERTY, iri)
+        self.add_triple(iri, SCHEMA_NAME, Literal(name))
+        for domain_class in domain_classes:
+            self._graph.add((iri, SCHEMA_DOMAIN_INCLUDES, IRI(domain_class.iri)))
+        logger.info(
+            "Added new property %s for domain classes %s from sheet %s in %s",
+            iri.curie,
+            ", ".join([class_.curie for class_ in domain_classes]),
+            excel_location.sheet,
+            excel_location.path,
+            extra={ISSUE_TYPE: IssueType.ADDED_LOCAL_PROPERTY},
+        )
+
+    def get_graph(self) -> Graph:
+        """Access the `Graph` created from the spreadsheets.
+
+        Ensure the graph is fully processed and return it
+
+        :return: Graph
+        """
+        logger.debug("Finalising and returning graph")
+
+        if len(self.required_properties) > 0:
+            self.process_required_properties()
+
+        return self._graph
+
+    def process_required_properties(self) -> bool:
+        """Process all deferred required properties.
+
+        Check that all expected IRIs exist and add any outstanding
+        triples referencing them.
+
+        :return: True if all properties have been processed
+        """
+        success = True
+
+        logger.debug("Processing %d properties", len(self.required_properties))
+
+        remaining: list[RequiredProperty] = []
+        for required_property in self.required_properties:
+            logger.debug("Processing required property %s", required_property)
+            if required_property.object in self.instances:
+                # If the object exists in the graph, add the triple
+                self._graph.add(
+                    (
+                        required_property.subject,
+                        required_property.property,
+                        required_property.object,
+                    )
+                )
+            else:
+                # If the object does not exist, report and error and remember
+                # the required property.
+                logger.error(
+                    "Could not find referenced object %s for subject %s and property %s (%s)",
+                    required_property.object,
+                    required_property.subject,
+                    required_property.property,
+                    required_property.excel_location,
+                    extra={ISSUE_TYPE: IssueType.MISSING_REFERENCE},
+                )
+                remaining.append(required_property)
+                success = False
+
+        logger.debug("%d properties unprocessed", len(remaining))
+        self.required_properties = remaining
+
+        return success
+
+    def find_known_instance(self, class_iri: IRI, name: str) -> IRI | None:
+        """Select existing object meeting policy-based criteria as the current instance of a class with a given name.
+
+        This is a special method to support parsing definitions for objects
+        complying with the APPN schema and having a specified name
+
+        The policy is to look for instances of the specified class in the
+        current crate and otherwise in the vocabulary namespace for the
+        current APPN node or (if no such match is found) in the central
+        APPN vocabulary namespace.
+
+        Candidates are evaluated based on the IRI string for each instance.
+        The goal is to find an instance for which IRI belongs to the expected
+        class (which may mean belonging to a subclass) and that the name part
+        of the IRI ends wuth a cleaned version of the supplied name. Case is
+        ignored when comparing the cleaned name parts, so a request for an
+        instance of the GrowthFacilityType class with any of "glasshouse",
+        "Glasshouse", "GlassHouse", "Glass House", "GLASSHOUSE", etc. provided
+        as the search name will match an instance with an IRI ending "gft_Glasshouse".
+
+        :param class_iri: The class to which the instance should belong
+        :param name:      String name for the search
+        :return:          Matching instance if found, else None
+        """
+        iri_name = self.dictionary.build_clean_name(class_iri, name).lower()
+
+        for iri in self.dictionary.list_instances(class_iri):
+            if iri.name.lower().endswith(iri_name):
+                return iri
+
+        return None
+
+    def lower_first(self, name: str) -> str:
+        """Return name string with first character wrapped to lower case.
+
+        :param name: Name for processing
+        :return: Name with first character in lowercase
+        """
+        return name[0].lower() + name[1:]
+
+    def upper_first(self, name: str) -> str:
+        """Return name string with first character wrapped to upper case.
+
+        :param name: Name for processing
+        :return: Name with first character in uppercase
+        """
+        return name[0].upper() + name[1:]
+
+
+### OutputFormat ##############################################################
+
+
+class OutputFormat(StrEnum):
+    """Simple class for vocabulary output formats."""
+
+    TURTLE = "ttl"
+    JSON = "json"
+
+
+### process_argv ##############################################################
+#
+# Safely process sys.argv, returning a dictionary of option values.
+#
+#     -n, --node        : Node name (actually name of subfolder under source)
+#                         or "all" to process all nodes (subfolders).
+#     -m, --mode        : Output mode "json" for JSON-LD or "rdf" for xml/rdf (default)
+#     -l, --log-level   : "info" / "error" / "debug".
+#     -e,               : Display logging outputs to stderr.
+#      --echo-to-stderr
+#
+
+ARG_FORMAT = "format"
+ARG_NODE = "node"
+
+ARG_VALUE_ALL = "all"
+
+
+def process_argv(argv: list[str], settings: LinkedDataSettings) -> dict[str, Any]:
+    """Parse sys.argv values to extract a list of nodes for processing and a list of output formats.
+
+    :param argv: Arguments from sys.argv.
+    :param node_ids: List of abbreviated names for APPN nodes (including APPN for APPN central).
+    :return: Processed arguments
+    """
+    parser = argparse.ArgumentParser(
+        prog=argv[0],
+        description=f"{argv[0]}: Generate linked-data outputs from APPN node vocabulary sheets",
+    )
+
+    formats = [output_format.value for output_format in OutputFormat]
+    parser.add_argument(
+        "-f",
+        "--format",
+        choices=([*formats, ARG_VALUE_ALL]),
+        action="append",
+        help=f"Output format (default: {OutputFormat.TURTLE}) or 'all' (for all supported formats).",
+    )
+
+    # The list of node_ids should start with APPN so any central changes get processed first.
+    node_ids: list[str] = sorted(settings.get_organisations().keys())
+    parser.add_argument(
+        "-n",
+        "--node",
+        choices=([*node_ids, ARG_VALUE_ALL]),
+        action="append",
+        help="APPN node abbreviated name or 'all' (default).",
+    )
+
+    args = vars(parser.parse_args(argv[1:]))
+
+    if ARG_FORMAT not in args or args[ARG_FORMAT] is None:
+        args[ARG_FORMAT] = [OutputFormat.TURTLE]
+    elif ARG_VALUE_ALL in args[ARG_FORMAT]:
+        args[ARG_FORMAT] = formats
+
+    if OutputFormat.TURTLE in args[ARG_FORMAT]:
+        args[ARG_FORMAT].remove(OutputFormat.TURTLE)
+        args[ARG_FORMAT].insert(0, OutputFormat.TURTLE)
+
+    if (
+        ARG_NODE not in args
+        or args[ARG_NODE] is None
+        or ARG_VALUE_ALL in args[ARG_NODE]
+    ):
+        args[ARG_NODE] = node_ids
+
+    if CENTRAL_ORGANISATION in args[ARG_NODE]:
+        args[ARG_NODE].remove(CENTRAL_ORGANISATION)
+        args[ARG_NODE].insert(0, CENTRAL_ORGANISATION)
+
+    return args
+
+
+SOURCE_PATH = Path("./src/vocabulary_templates/")
+BUILD_PATH = Path("./build/vocabulary/")
+EXCEL_SHEET_BASENAME = "VocabularyTemplate_"
+EXCEL_SHEET_SUFFIX = ".xlsx"
+VOCABULARY_BASENAME = "_vocabulary"
+
+
+def verify_existing_terms(
+    latest_version: Dictionary, published_version: Dictionary
+) -> None:
+    """Ensure backwards compatibility for vocabulary.
+
+    All instances defined in the previous version of the
+    vocabulary should be retained, and all instances should
+    still belong to previously defined types.
+
+    Warn the user of issues, but make necessary corrections.
+
+    :param latest_version: Dictionary of the new version to validate.
+    :param published_version: Dictionary of current live version.
+    """
+    instance_type_query = "SELECT ?x ?y WHERE { ?x rdf:type ?y }"
+
+    old_instances = published_version.list_unique_subjects()
+    old_types = published_version.query(instance_type_query)
+    old_type_dictionary: dict[str, list[str]] = {}
+    for old_type in old_types:
+        if old_type[0] not in old_type_dictionary:
+            old_type_dictionary[old_type[0]] = []
+        old_type_dictionary[old_type[0]].append(old_type[1])
+
+    new_instances = latest_version.list_unique_subjects()
+    new_types = latest_version.query(instance_type_query)
+    new_type_dictionary: dict[str, list[str]] = {}
+    for new_type in new_types:
+        if new_type[0] not in new_type_dictionary:
+            new_type_dictionary[new_type[0]] = []
+        new_type_dictionary[new_type[0]].append(new_type[1])
+
+    for instance in old_instances:
+        if instance not in new_instances:
+            logger.warning(
+                "Published version of vocabulary includes a term %s - adding to the new version",
+                instance.curie,
+                extra={ISSUE_TYPE: IssueType.MISSING_INSTANCE},
+            )
+            for triple in published_version.list_triples_for_subject(instance):
+                latest_version.add_triple(triple)
+        else:
+            missing_types = sorted(
+                old_type
+                for old_type in old_type_dictionary[instance]
+                if old_type not in new_type_dictionary[instance]
+            )
+            # Ignore cases where the previously reported class is a superclass for one of the
+            # reported classes
+            reportable_types = []
+            for missing_type in missing_types:
+                subclasses = latest_version.list_subclasses(missing_type)
+                if not any(
+                    subclass in new_type_dictionary[instance] for subclass in subclasses
+                ):
+                    reportable_types.append(missing_type)
+            if len(reportable_types) > 0:
+                logger.warning(
+                    "Published term %s has missing types: %s - adding these to the new version",
+                    instance.curie,
+                    ", ".join(
+                        [reportable_type.curie for reportable_type in reportable_types]
+                    ),
+                    extra={ISSUE_TYPE: IssueType.MISSING_INSTANCE_TYPE},
+                )
+                for missing_type in missing_types:
+                    latest_version.add_triple(Triple(instance, RDF_TYPE, missing_type))
+
+
+def underline(text: str, underline_character: str = "-") -> str:
+    """Add aligned underlining text below text (allowing for leading and trailing blanks).
+
+    Repeat the supplied or default underline character in a new line starting
+    at the first non-whitespace character in the original line and ending with
+    the last non-whitespace character. Any single whitespace character between
+    these points will be part of the underlined section.
+
+    :param text: Text to underline.
+    :param underline_character: Character to use for underlining.
+    :return: Two lines of text, one containing underlining.
+    """
+    if len(underline_character) > 0:
+        underline_character = underline_character[0]
+    else:
+        underline_character = "-"
+
+    underline = re.sub(r"\S", underline_character, text)
+    underline = re.sub(r"\S\s\S", underline_character * 3, underline)
+
+    return f"{text}\n{underline}"
+
+
+### MAIN PROGRAM ##############################################################
+#
+# Parse arguments and set up logging. Based on arguments, scan one or all
+# source folders for all Excel spreadheets and generate a JSON-LD vocabulary
+# for all schema class instances included.
+#
+if __name__ == "__main__":
+    settings = LinkedDataSettings()
+
+    args = process_argv(sys.argv, settings)
+
+    nodes = args["node"]
+    formats = args["format"]
+
+    timestamp = datetime.datetime.now(datetime.UTC).isoformat()
+
+    BUILD_PATH.mkdir(parents=True, exist_ok=True)
+
+    if CENTRAL_ORGANISATION in nodes:
+        appn_vocabulary_location = (
+            BUILD_PATH / f"{CENTRAL_ORGANISATION}{VOCABULARY_BASENAME}.{formats[0]}"
+        )
+    else:
+        appn_vocabulary_location = None
+
+    processing_appn = CENTRAL_ORGANISATION in nodes
+
+    # Generate vocabulary for each selected node in turn.
+    for node in nodes:
+        excel_template = f"{EXCEL_SHEET_BASENAME}{node}{EXCEL_SHEET_SUFFIX}"
+        excel_path = SOURCE_PATH / excel_template
+
+        if not excel_path.exists():
+            logger.error("Missing Excel vocabulary template %s", excel_path)
+        else:
+            issue_handler = IssueHandler()
+            logger.addHandler(issue_handler)
+
+            organisation = settings.get_organisation_by_id(node)
+            parser = ExcelVocabularyParser(organisation, appn_vocabulary_location)
+            parser.load(excel_path)
+
+            inspector = Dictionary(parser.get_graph())
+
+            # Make sure that everything in the current published version of the
+            # vocabulary remains in the new version.
+            current_version = Dictionary()
+            current_version.load(organisation.namespace)
+
+            verify_existing_terms(inspector, current_version)
+
+            with (BUILD_PATH / f"{node}_report.txt").open(mode="w") as report:
+                print(underline(f"Processing {excel_path}", "~"))  # noqa: T201
+                counts = inspector.count_triples_by_subject()
+                report.write(
+                    underline(f"Overview of processing for {node} vocabulary", "≡")
+                    + "\n\n"
+                )
+
+                issues = issue_handler.get_issues(True)
+                if len(issues) > 0:
+                    issue_text = ""
+                    issue_text += (
+                        "\n" + underline("ISSUES DETECTED IN VOCABULARY", "=") + "\n\n"
+                    )
+                    for level in sorted(issues.keys(), reverse=True):
+                        issue_text += f"{underline(logging.getLevelName(level) + ' MESSAGES:')}\n\n"
+                        for issue_type, issue_records in issues[level].items():
+                            issue_text += (
+                                "\n".join(
+                                    textwrap.wrap(
+                                        f"ISSUE: {issue_type.value}\n",
+                                        width=80,
+                                        initial_indent="    ",
+                                        subsequent_indent="        ",
+                                    )
+                                )
+                                + "\n\n"
+                            )
+                            if issue_type.suggested_fix is not None:
+                                issue_text += (
+                                    "\n".join(
+                                        textwrap.wrap(
+                                            f"SUGGESTED FIX: {issue_type.suggested_fix}\n",
+                                            width=80,
+                                            initial_indent="    ",
+                                            subsequent_indent="        ",
+                                        )
+                                    )
+                                    + "\n\n"
+                                )
+                            issue_text += f"    OCCURRENCES: {len(issue_records)}\n\n"
+                            for i in range(len(issue_records)):
+                                issue_text += (
+                                    "\n".join(
+                                        textwrap.wrap(
+                                            f"{i + 1:>4d}: {issue_records[i].getMessage()}\n",
+                                            width=80,
+                                            initial_indent="    ",
+                                            subsequent_indent="            ",
+                                        )
+                                    )
+                                    + "\n"
+                                )
+                            issue_text += "\n"
+
+                    print(issue_text)  # noqa: T201
+                    report.write(issue_text)
+                else:
+                    report.write("NO ISSUES DETECTED IN VOCABULARY\n\n")
+
+                report.write(
+                    underline(
+                        "Terms defined in vocabulary (with counts of associated properties)"
+                    )
+                    + "\n\n"
+                )
+                if len(counts) > 0:
+                    length = max([len(k) for k in counts])
+                    for p in sorted(counts.keys()):
+                        report.write(f"  {p.curie:{length + 1}s} : {counts[p]:>5d}\n")
+
+                counts = inspector.count_triples_by_property()
+                report.write("\n" + underline("Counts of triples by property") + "\n\n")
+                if len(counts) > 0:
+                    length = max([len(k) for k in counts])
+                    for p in sorted(counts.keys()):
+                        report.write(f"  {p.curie:{length + 1}s} : {counts[p]:>5d}\n")
+
+                report.write("\n")
+
+            parser.get_graph().serialize(
+                destination=BUILD_PATH / f"{node}_vocabulary.ttl"
+            )

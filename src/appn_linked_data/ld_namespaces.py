@@ -140,7 +140,7 @@ class NamespaceDefinitionManager:
                 namespace_definition.prefix
                 == self._namespace_dictionary[namespace_definition.namespace].prefix
             ):
-                logger.info(
+                logger.debug(
                     "Changing location for namespace definition for <%s> from %s to %s",
                     namespace_definition.namespace,
                     self._namespace_dictionary[namespace_definition.namespace],

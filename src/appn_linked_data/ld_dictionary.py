@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""dictionary - Import RDF assets into a graph and support diverse query mechanisms.
+"""ld_dictionary - Import RDF assets into a graph and support diverse query mechanisms.
 
 Import RDF assets into a graph and support diverse query mechanisms
 
@@ -21,26 +21,53 @@ import re
 import textwrap
 from importlib import resources
 
+from pydantic import AnyHttpUrl, FilePath
 from rdflib import BNode, Graph, Node, URIRef
 from rdflib.namespace import Namespace, NamespaceManager
 
 from appn_linked_data import assets
 from appn_linked_data.ld_constants import (
     ALT_SCHEMA_SCHEMA,
+    ANU_VOCABULARY,
+    APPN_SCHEMA,
+    APPN_VOCABULARY,
+    AU_VOCABULARY,
+    BIO_SCHEMA,
+    CDI_SCHEMA,
+    CDIF_SCHEMA,
+    CSU_VOCABULARY,
     DC_SCHEMA,
+    DPIRD_VOCABULARY,
+    DWC_SCHEMA,
+    LTU_VOCABULARY,
     OWL_SCHEMA,
+    PPEO_SCHEMA,
+    PROV_SCHEMA,
     RDF_SCHEMA,
     RDFS_SCHEMA,
     SCHEMA_SCHEMA,
     SKOS_SCHEMA,
+    SOSA_SCHEMA,
+    SSN_SCHEMA,
+    UQ_VOCABULARY,
+    USYD_VOCABULARY,
+    UWA_VOCABULARY,
+    WSU_VOCABULARY,
     XML_SCHEMA,
 )
 from appn_linked_data.ld_iri import (
     IRI,
+    RDF_PROPERTY,
+    RDF_TYPE,
+    RDFS_CLASS,
+    RDFS_LABEL,
+    SCHEMA_NAME,
+    SKOS_CONCEPT,
     Triple,
     TriplePosition,
 )
 from appn_linked_data.ld_namespaces import (
+    AssetLoadLocation,
     NamespaceDefinition,
     NamespaceDefinitionManager,
 )
@@ -57,22 +84,6 @@ NAME_REPLACEMENT_PATTERN = re.compile(r"[\s'\"\\?;:,°*+(){}/\[\]-]+")
 
 ### Dictionary ################################################################
 
-# Convenience versions of regularly used IRIs
-RDF_TYPE = IRI(f"{RDF_SCHEMA}type")
-RDF_PROPERTY = IRI(f"{RDF_SCHEMA}Property")
-RDFS_CLASS = IRI(f"{RDFS_SCHEMA}Class")
-RDFS_COMMENT = IRI(f"{RDFS_SCHEMA}comment")
-RDFS_LABEL = IRI(f"{RDFS_SCHEMA}label")
-SCHEMA_DOMAIN_INCLUDES = IRI(f"{SCHEMA_SCHEMA}domainIncludes")
-SCHEMA_NAME = IRI(f"{SCHEMA_SCHEMA}name")
-SCHEMA_DESCRIPTION = IRI(f"{SCHEMA_SCHEMA}description")
-SKOS_CONCEPT = IRI(f"{SKOS_SCHEMA}Concept")
-SKOS_CONCEPT_SCHEME = IRI(f"{SKOS_SCHEMA}ConceptScheme")
-SKOS_IN_SCHEME = IRI(f"{SKOS_SCHEMA}inScheme")
-SKOS_PREF_LABEL = IRI(f"{SKOS_SCHEMA}prefLabel")
-DC_TITLE = IRI(f"{DC_SCHEMA}title")
-DC_DESCRIPTION = IRI(f"{DC_SCHEMA}description")
-
 # BNode prefix - ensure BNodes are recognised and handled correctly.
 # BNodes are displayed as strings and not handled by the IRI class. When
 # displayed by Dictionary, they include this prefix. When a request is
@@ -84,31 +95,32 @@ BNODE_PREFIX = "::"
 MAX_COLUMN_LENGTH = 80
 
 NAMESPACE_ASSETS: dict[str, str] = {
-    "https://schema.plantphenomics.org.au/": "appn-schema.ttl",
-    "http://ddialliance.org/Specification/DDI-CDI/1.0/RDF/": "DDICDILibrary.ttl",
-    "http://purl.org/ppeo/PPEO.owl#": "PPEO.owl",
-    "https://bioschemas.org/terms/": "bioschemas_types.ttl",
-    "http://purl.org/dc/terms/": "dublin_core_terms.rdf",
-    "http://www.w3.org/ns/prov#": "prov.ttl",
-    "http://www.w3.org/1999/02/22-rdf-syntax-ns#": "22-rdf-syntax-ns.ttl",
-    "http://www.w3.org/2000/01/rdf-schema#": "rdf-schema.ttl",
-    "http://schema.org/": "schemaorg-current-http.ttl",
-    "http://www.w3.org/2004/02/skos/core#": "skos.rdf",
-    "http://www.w3.org/ns/sosa/": "sosa.ttl",
-    "http://www.w3.org/ns/ssn/": "ssn.ttl",
-    "http://rs.tdwg.org/dwc/terms/": "dwc-terms.ttl",
-    "http://www.w3.org/2002/07/owl#": "owl.ttl",
-    "https://w3id.org/cdif/": "cdifCoreStructuredSchema.json",
-    "https://id.plantphenomics.org.au/APPN/": "APPN_vocabulary.ttl",
-    "https://id.plantphenomics.org.au/ANU/": "ANU_vocabulary.ttl",
-    "https://id.plantphenomics.org.au/AU/": "AU_vocabulary.ttl",
-    "https://id.plantphenomics.org.au/CSU/": "CSU_vocabulary.ttl",
-    "https://id.plantphenomics.org.au/DPIRD/": "DPIRD_vocabulary.ttl",
-    "https://id.plantphenomics.org.au/LTU/": "LTU_vocabulary.ttl",
-    "https://id.plantphenomics.org.au/UQ/": "UQ_vocabulary.ttl",
-    "https://id.plantphenomics.org.au/USYD/": "USYD_vocabulary.ttl",
-    "https://id.plantphenomics.org.au/UWA/": "UWA_vocabulary.ttl",
-    "https://id.plantphenomics.org.au/WSU/": "WSU_vocabulary.ttl",
+    APPN_SCHEMA: "appn-schema.ttl",
+    CDI_SCHEMA: "DDICDILibrary.ttl",
+    PPEO_SCHEMA: "PPEO.owl",
+    BIO_SCHEMA: "bioschemas_types.ttl",
+    DC_SCHEMA: "dublin_core_terms.rdf",
+    PROV_SCHEMA: "prov.ttl",
+    RDF_SCHEMA: "22-rdf-syntax-ns.ttl",
+    RDFS_SCHEMA: "rdf-schema.ttl",
+    SCHEMA_SCHEMA: "schemaorg-current-http.ttl",
+    ALT_SCHEMA_SCHEMA: "schemaorg-current-https.ttl",
+    SKOS_SCHEMA: "skos.rdf",
+    SOSA_SCHEMA: "sosa.ttl",
+    SSN_SCHEMA: "ssn.ttl",
+    DWC_SCHEMA: "dwc-terms.ttl",
+    OWL_SCHEMA: "owl.ttl",
+    CDIF_SCHEMA: "cdifCoreStructuredSchema.json",
+    APPN_VOCABULARY: "APPN_vocabulary.ttl",
+    ANU_VOCABULARY: "ANU_vocabulary.ttl",
+    AU_VOCABULARY: "AU_vocabulary.ttl",
+    CSU_VOCABULARY: "CSU_vocabulary.ttl",
+    DPIRD_VOCABULARY: "DPIRD_vocabulary.ttl",
+    LTU_VOCABULARY: "LTU_vocabulary.ttl",
+    UQ_VOCABULARY: "UQ_vocabulary.ttl",
+    USYD_VOCABULARY: "USYD_vocabulary.ttl",
+    UWA_VOCABULARY: "UWA_vocabulary.ttl",
+    WSU_VOCABULARY: "WSU_vocabulary.ttl",
 }
 
 
@@ -178,10 +190,10 @@ class Dictionary:
         """
         return self._graph
 
-    def load(
+    def load(  # noqa: PLR0912
         self,
         asset_namespace: str,
-        asset_path: str | None = None,
+        asset_path: AssetLoadLocation | AnyHttpUrl | FilePath | None = None,
         asset_prefix: str | None = None,
     ) -> bool:
         """Load an RDF asset (any format supported by `rdflib`).
@@ -226,12 +238,12 @@ class Dictionary:
         # one from a `NamespaceDefinition`, or the namespace URL.
         if asset_path is None:
             asset_path = (
-                str(namespace_definition.location)
+                namespace_definition.location
                 if (
                     namespace_definition is not None
                     and namespace_definition.location is not None
                 )
-                else asset_namespace
+                else AnyHttpUrl(asset_namespace)
             )
 
         # Determine what prefix to use for the namespace, either a supplied
@@ -257,12 +269,18 @@ class Dictionary:
             asset_prefix,
         )
         try:
-            if asset_path.upper() == "INTERNAL" and asset_namespace in NAMESPACE_ASSETS:
-                self._graph.parse(
-                    resources.files(assets) / NAMESPACE_ASSETS[asset_namespace]  # type: ignore[arg-type]
-                )
+            if isinstance(asset_path, AssetLoadLocation):
+                if (
+                    asset_path == AssetLoadLocation.INTERNAL
+                    and asset_namespace in NAMESPACE_ASSETS
+                ):
+                    self._graph.parse(
+                        resources.files(assets) / NAMESPACE_ASSETS[asset_namespace]  # type: ignore[arg-type]
+                    )
+                else:
+                    self._graph.parse(asset_namespace)
             else:
-                self._graph.parse(asset_path)
+                self._graph.parse(asset_path)  # type: ignore[arg-type]
 
             self.loaded.add(asset_namespace)
             if asset_prefix is not None:
@@ -311,8 +329,8 @@ class Dictionary:
                             "Unexpected use of alternative schema.org namespace (%s) in triple (%s, %s, %s)",
                             ALT_SCHEMA_SCHEMA,
                             str(s),
-                            str(p),
                             str(o),
+                            str(p),
                         )
                         success = False
                     # Don't try importing XSD - no RDF representation available
@@ -702,8 +720,40 @@ class Dictionary:
             for class_ in self.list_superclasses(class_iri)
         ]
         return self.list_iris(
-            query_strings, f"range|{class_iri}|{namespace}", namespace
+            query_strings, f"range_properties|{class_iri}|{namespace}", namespace
         )
+
+    def get_domain_range_property(self, domain_iri: IRI, range_iri: IRI) -> IRI | None:
+        """Return the property that should be used to link instances of a domain class with those of an instance class.
+
+        If a property is configured in `LinkedDataSettings`.`get_domain_range_properties`,
+        return that. Otherwise, if only one APPN property has the specified classes
+        in its domain and range, return that. Otherwise, return None.
+
+        :param domain_iri: IRI for domain class.
+        :param range_iri: IRI for range class.
+        :return: IRI for selected property if any.
+        """
+        cache_key = f"domain_range_property|{domain_iri}|{range_iri}"
+        if cache_key in self.cache:
+            return self.cache[cache_key]  # type: ignore[return-value]
+
+        domain_range_properties = self.settings.get_domain_range_properties()
+        if (
+            domain_iri in domain_range_properties
+            and range_iri in domain_range_properties[domain_iri]
+        ):
+            property_iri: IRI | None = domain_range_properties[domain_iri][range_iri]
+        else:
+            range_properties = self.list_properties_by_domain_and_range(
+                domain_iri,
+                range_iri,
+                namespace=APPN_SCHEMA,
+            )
+            property_iri = range_properties[0] if len(range_properties) == 1 else None
+
+        self.cache[cache_key] = property_iri  # type: ignore[assignment]
+        return property_iri
 
     def list_domain_classes_for_property(
         self,
@@ -712,6 +762,13 @@ class Dictionary:
     ) -> list[IRI]:
         """List all known classes that are included in the domain of a specified property.
 
+        If a specific `rdfs:domain` is included for the property or one of its superproperties,
+        return that class - it is an exclusive domain.
+
+        Otherwise, return the union of all classes included in `schema:domainIncludes` properties
+        for the property or one of its superproperties. These are inclusive domains, documenting
+        expectations rather than constraints.
+
         Results may optionally be filtered to matches within a specified
         namespace.
 
@@ -720,13 +777,27 @@ class Dictionary:
         :return: List of `IRI`s for classes
         """
         property_iri = IRI(property_iri)
+
+        cache_key = f"domain|{property_iri}|{namespace}"
+        if cache_key in self.cache:
+            return self.cache[cache_key].copy()  # type: ignore[return-value]
+
+        superproperties = self.list_superproperties(property_iri)
+
+        for property_ in superproperties:
+            exact_domain = self.list_iris(
+                [f"{{ <{property_}> rdfs:domain ?q }} ."],
+                f"exact_domain|{property_}|{namespace}",
+            )
+            if len(exact_domain) == 1:
+                self.cache[cache_key] = self.list_subclasses(exact_domain[0])
+                return self.cache[cache_key].copy()  # type: ignore[return-value]
+
         query_strings = [
-            f"{{ <{property_}> schema:domainIncludes ?q }} UNION {{ <{property_}> rdfs:domain ?q }} ."
-            for property_ in self.list_superproperties(property_iri)
+            f"{{ <{property_}> schema:domainIncludes ?q }} ."
+            for property_ in superproperties
         ]
-        return self.list_iris(
-            query_strings, f"domain|{property_iri}|{namespace}", namespace
-        )
+        return self.list_iris(query_strings, cache_key, namespace)
 
     def list_range_classes_for_property(
         self,
@@ -735,6 +806,13 @@ class Dictionary:
     ) -> list[IRI]:
         """List all known classes that are included in the range of a specified property.
 
+        If a specific `rdfs:range` is included for the property or one of its superproperties,
+        return that class - it is an exclusive range.
+
+        Otherwise, return the union of all classes included in `schema:rangeIncludes` properties
+        for the property or one of its superproperties. These are inclusive ranges, documenting
+        expectations rather than constraints.
+
         Results may optionally be filtered to matches within a specified
         namespace.
 
@@ -743,13 +821,29 @@ class Dictionary:
         :return: List of `IRI`s for classes
         """
         property_iri = IRI(property_iri)
+
+        cache_key = f"range_classes|{property_iri}|{namespace}"
+        if cache_key in self.cache:
+            return self.cache[cache_key].copy()  # type: ignore[return-value]
+
+        superproperties = self.list_superproperties(property_iri)
+
+        for property_ in superproperties:
+            exact_range = self.list_iris(
+                [f"{{ <{property_}> rdfs:range ?q }} ."],
+                f"exact_range|{property_}|{namespace}",
+            )
+            if len(exact_range) == 1:
+                self.cache[cache_key] = self.list_subclasses(
+                    exact_range[0], namespace=namespace
+                )
+                return self.cache[cache_key].copy()  # type: ignore[return-value]
+
         query_strings = [
-            f"{{ <{property_}> schema:rangeIncludes ?q }} UNION {{ <{property_}> rdfs:range ?q }} ."
-            for property_ in self.list_superproperties(property_iri)
+            f"{{ <{property_}> schema:rangeIncludes ?q }} ."
+            for property_ in superproperties
         ]
-        return self.list_iris(
-            query_strings, f"range|{property_iri}|{namespace}", namespace
-        )
+        return self.list_iris(query_strings, cache_key, namespace)
 
     def list_instances_without_subclasses(
         self, class_iri: str | IRI, namespace: str | None = None
@@ -973,7 +1067,7 @@ class Dictionary:
                             # a new copy, so popping the value is safe.
                             explicit_rules.pop(superclass_namespace)
 
-        if is_concept:
+        if is_concept and main_class.ns == APPN_SCHEMA:
             # This IRI is also a SKOS Concept
             explicit_classes.append(SKOS_CONCEPT)
 
@@ -1112,41 +1206,10 @@ class Dictionary:
         :param object_: Optional IRI for object of matching triples
         :return: List of matching triples
         """
-        filters = []
-        if subject_ is not None:
-            filters.append(f"FILTER (?s = <{subject_}> ).")
-        if property_ is not None:
-            filters.append(f"FILTER (?p = <{property_.iri}> ).")
-        if object_ is not None:
-            if isinstance(object_, IRI):
-                object_string = f"<{object_.iri}>"
-            elif isinstance(object_, str):
-                object_string = f"'{object_}'"
-            else:
-                object_string = f"{object_}"
-            filters.append(f"FILTER (?o = {object_string} ).")
-
-        if len(filters) == 0:
-            return self.list_triples()
-
-        filter_string = "\n".join(filters)
-        sparql_query = f"SELECT ?s ?p ?o\nWHERE {{\n?s ?p ?o .\n{filter_string}\n}}"
-
-        logger.debug("Issuing query:\n%S", sparql_query)
-
-        results = []
-
-        for row in self._graph.query(sparql_query):
-            if not isinstance(row, bool):
-                results.append(
-                    Triple(
-                        row[TriplePosition.SUBJECT],
-                        row[TriplePosition.PREDICATE],
-                        row[TriplePosition.OBJECT],
-                    )
-                )
-
-        return results
+        return [
+            Triple(s, p, o)
+            for s, p, o in self._graph.triples((subject_, property_, object_))  # type: ignore[arg-type]
+        ]
 
     def get_name(self, iri: IRI | str, triples: list[Triple] | None = None) -> str:
         """Return name string for supplied IRI if one can be found.
@@ -1215,8 +1278,7 @@ class Dictionary:
 
         if len(iri_types) > 1:
             logger.warning(
-                "IRI %s has multiple types: %s",
-                iri.curie,
+                "IRI {iri} has multiple types: %s",
                 ", ".join([t.curie for t in iri_types]),
             )
 
@@ -1380,6 +1442,13 @@ class Dictionary:
             self.cache[cache_key] = matches
 
         return matches.copy()
+
+    def add_triple(self, triple: Triple) -> None:
+        """Add a `Triple` to the `Graph`.
+
+        :param triple: Triple compatible with rdflib `Graph`
+        """
+        self._graph.add(triple)  # type: ignore[arg-type]
 
     def describe(self, iri: IRI | str, friendly: bool | None = False) -> str:
         """Format an IRI and its properties.
@@ -1546,6 +1615,21 @@ class Dictionary:
         :param name:      String name for the search
         :return: Constructed IRI
         """
+        if namespace in self.namespace_prefix_dictionary:
+            namespace = self.namespace_prefix_dictionary[namespace].namespace
+
+        # Build and return the IRI
+        return IRI(f"{namespace}{self.build_clean_name(class_iri, name)}")
+
+    def build_clean_name(self, class_iri: IRI | str, name: str) -> str:
+        """Build clean version of instance name with prefix (avoiding whitespace and problematic characters).
+
+        The pattern is <class_identifier>_<title_case_name>".
+
+        :param namespace: The namespace in which the IRI is to be constructed
+        :param name:      String name to clean
+        :return:          Cleaned TitleCase name
+        """
         if not isinstance(class_iri, IRI):
             class_iri = IRI(class_iri)
 
@@ -1554,21 +1638,27 @@ class Dictionary:
         # Use any abbreviation for the class from the `LinkedDataSettings`
         prefix = (class_abbreviations.get(class_iri, class_iri.name)).lower()
 
-        if namespace in self.namespace_prefix_dictionary:
-            namespace = self.namespace_prefix_dictionary[namespace].namespace
-
-        # Build and return the IRI
-        return IRI(f"{namespace}{prefix}_{self.build_clean_name(name)}")
-
-    def build_clean_name(self, name: str) -> str:
-        """Build clean version of instance name (avoiding whitespace and problematic characters).
-
-        :param name:      String name to clean
-        :return:          Cleaned TitleCase name
-        """
-        return "".join(
+        clean_name_string = "".join(
             [
                 (w[0].upper() + w[1:])
                 for w in NAME_REPLACEMENT_PATTERN.sub(" ", name).strip().split()
             ]
         )
+
+        return f"{prefix}_{clean_name_string}"
+
+    def get_class_dictionary_for_namespace(self, namespace: str) -> dict[str, IRI]:
+        """Utility method to map names of all classes in a namespace to IRIs.
+
+        Return class names from given namespace.
+
+        :param namespace: String namespace or prefix
+        :return: Dict mapping class names to class IRIs
+        """
+        cache_key = "class_names|{namespace}"
+        if cache_key not in self.cache:
+            self.cache[cache_key] = {
+                class_.name: class_  # type: ignore[misc]
+                for class_ in self.list_classes(namespace=namespace)
+            }
+        return self.cache[cache_key].copy()  # type: ignore[return-value]

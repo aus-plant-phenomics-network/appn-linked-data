@@ -45,3 +45,12 @@ def test_triple() -> None:
     assert triple.predicate.iri == f"{SCHEMA_SCHEMA}name"
     assert not isinstance(triple.object, IRI)
     assert str(triple.object) == strings[2]
+    non_triple = (strings[0], strings[1], strings[2])
+    assert triple == strings
+    assert triple == non_triple
+    strings[1] = f"{SCHEMA_SCHEMA}name"
+    second_triple = Triple(URIRef(strings[0]), URIRef(strings[1]), Literal(strings[2]))
+    assert second_triple == strings
+    assert triple == second_triple
+    assert second_triple == strings
+    assert strings == second_triple

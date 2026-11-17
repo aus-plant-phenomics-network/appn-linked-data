@@ -1,0 +1,34 @@
+# Normalise line endings — LF in the repository, always (§3.13).
+* text=auto eol=lf
+
+# Scripts must keep LF even on Windows checkouts; CRLF breaks the shebang.
+*.sh   text eol=lf
+*.bash text eol=lf
+
+# Windows-only tooling.
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary — never diff, never normalise.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.pdf    binary
+*.zip    binary
+*.gz     binary
+*.parquet binary
+*.xlsx   binary
+*.rds    binary
+*.RData  binary
+
+# Generated or vendored files: keep them out of diffs and language stats.
+*.lock       linguist-generated=true -diff
+package-lock.json linguist-generated=true -diff
+uv.lock      linguist-generated=true -diff
+poetry.lock  linguist-generated=true -diff
+renv.lock    linguist-generated=true -diff
+
+# Notebooks diff badly; clear outputs before committing (§4.4).
+*.ipynb linguist-documentation

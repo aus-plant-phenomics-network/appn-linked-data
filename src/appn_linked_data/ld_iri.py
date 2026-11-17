@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator, Sequence
 from enum import IntEnum
 from typing import Any
 
@@ -14,8 +15,16 @@ from pydantic import (
 )
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
-from rdflib import Node, URIRef
+from rdflib import Literal, Node, URIRef
 
+from appn_linked_data.ld_constants import (
+    DC_SCHEMA,
+    RDF_SCHEMA,
+    RDFS_SCHEMA,
+    SCHEMA_SCHEMA,
+    SKOS_SCHEMA,
+    XML_SCHEMA,
+)
 from appn_linked_data.ld_namespaces import (
     NamespaceDefinitionManager,
 )
@@ -144,8 +153,7 @@ class IRI(URIRef):
 
         Hash is based on the IRI string
 
-        :param other: Object with which to compare
-        :return: True if object IRI strings match
+        :return: Hash value
         """
         return hash(self.iri)
 
@@ -183,6 +191,31 @@ class IRI(URIRef):
         return handler(core_schema.str_schema())
 
 
+### Convenience versions of regularly used IRIs ##############################
+
+DC_DESCRIPTION = IRI(f"{DC_SCHEMA}description")
+DC_TITLE = IRI(f"{DC_SCHEMA}title")
+RDF_PROPERTY = IRI(f"{RDF_SCHEMA}Property")
+RDF_TYPE = IRI(f"{RDF_SCHEMA}type")
+RDFS_CLASS = IRI(f"{RDFS_SCHEMA}Class")
+RDFS_COMMENT = IRI(f"{RDFS_SCHEMA}comment")
+RDFS_LABEL = IRI(f"{RDFS_SCHEMA}label")
+SCHEMA_COMMENT = IRI(f"{SCHEMA_SCHEMA}comment")
+SCHEMA_DESCRIPTION = IRI(f"{SCHEMA_SCHEMA}description")
+SCHEMA_DOMAIN_INCLUDES = IRI(f"{SCHEMA_SCHEMA}domainIncludes")
+SCHEMA_NAME = IRI(f"{SCHEMA_SCHEMA}name")
+SKOS_CONCEPT = IRI(f"{SKOS_SCHEMA}Concept")
+SKOS_CONCEPT_SCHEME = IRI(f"{SKOS_SCHEMA}ConceptScheme")
+SKOS_IN_SCHEME = IRI(f"{SKOS_SCHEMA}inScheme")
+SKOS_PREF_LABEL = IRI(f"{SKOS_SCHEMA}prefLabel")
+XML_ANYURI = IRI(f"{XML_SCHEMA}anyURI")
+XML_BOOLEAN = IRI(f"{XML_SCHEMA}boolean")
+XML_DATETIME = IRI(f"{XML_SCHEMA}dateTime")
+XML_DECIMAL = IRI(f"{XML_SCHEMA}decimal")
+XML_INTEGER = IRI(f"{XML_SCHEMA}integer")
+XML_STRING = IRI(f"{XML_SCHEMA}string")
+
+
 ### TriplePosition ############################################################
 
 
@@ -193,6 +226,8 @@ class TriplePosition(IntEnum):
     PREDICATE = 1
     OBJECT = 2
 
+
+TRIPLE_LENGTH = 3
 
 ### Triple ####################################################################
 
@@ -243,3 +278,51 @@ class Triple:
         if position == TriplePosition.PREDICATE:
             return self._predicate
         return self._object
+
+    def __iter__(self) -> Iterator:
+        """Return iterator."""
+        return (self._subject, self._predicate, self._object).__iter__()
+
+    def __eq__(self, other: Any) -> bool:
+        """Equality with other representations of the same triple.
+
+        Assert equality with matching triples containing `URIRef` and
+        string instances
+
+        :param other: Object with which to compare
+        :return: True is triples match
+        """
+        if isinstance(other, Triple):
+            return (
+                other._subject == self._subject
+                and other._predicate == self._predicate
+                and other._object == self._object
+            )
+        return (
+            isinstance(other, Sequence)
+            and len(other) == TRIPLE_LENGTH
+            and (self._subject, self._predicate, self._object)
+            == (
+                other[0],
+                other[1],
+                other[2] if isinstance(other[2], Node) else Literal(other[2]),
+            )
+        )
+
+    def __hash__(self) -> int:
+        """Hash the triple value.
+
+        Hash is based on the three elements.
+
+        :return: Hash value
+        """
+        return hash(str(self._subject) + str(self._predicate) + str(self._object))
+
+    def __str__(self) -> str:
+        """String representation for triple.
+
+        Display triple elememts.
+
+        :return: String representation
+        """
+        return f"Triple({self._subject.curie if isinstance(self._subject, IRI) else str(self._subject)}, {self._predicate.curie if isinstance(self._predicate, IRI) else str(self._predicate)}, {self._object.curie if isinstance(self._object, IRI) else str(self._object)})"

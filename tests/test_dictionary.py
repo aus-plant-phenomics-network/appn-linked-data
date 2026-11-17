@@ -335,6 +335,23 @@ def test_build_iri() -> None:
 
 
 def test_build_clean_name() -> None:
-    result = DEFAULT_DICTIONARY.build_clean_name("the new name")
+    result = DEFAULT_DICTIONARY.build_clean_name(
+        IRI("appn:ObservedVariable"), "the new name"
+    )
     assert result is not None
-    assert result == "TheNewName"
+    assert result == "ov_TheNewName"
+
+
+def test_domain_range_property() -> None:
+    # Property from unique match within schema
+    bu = IRI("appn:BiologicalUnit")
+    bm = IRI("appn:BiologicalMaterial")
+    assert DEFAULT_DICTIONARY.get_domain_range_property(bu, bm) == IRI(
+        "appn:hasBiologicalMaterial"
+    )
+    # Property from settings override
+    gf = IRI("appn:GrowthFacility")
+    sensor = IRI("appn:Sensor")
+    assert DEFAULT_DICTIONARY.get_domain_range_property(gf, sensor) == IRI("appn:hosts")
+    # No property defined
+    assert DEFAULT_DICTIONARY.get_domain_range_property(sensor, bm) is None

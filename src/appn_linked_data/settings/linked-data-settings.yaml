@@ -69,10 +69,12 @@ column_aliases:
 # the class instance should reference itself using the named property.
 completion_rules:
   "appn:ObservedVariable":
-    - "reflexive_property": "https://schema.plantphenomics.org.au/hasTrait"
+    - reflexive_property: "https://schema.plantphenomics.org.au/hasTrait"
   "appn:ControlledVariable":
-    - "reflexive_property": "https://schema.plantphenomics.org.au/hasTrait"
-
+    - reflexive_property: "https://schema.plantphenomics.org.au/hasTrait"
+  "appn:XYZLocation":
+    - default_value_property: "appn:hasLocationSchema"
+      default_value_object: "appnid:ls_XYZLocationSchema"
 # Abbreviated names for classes for use in composing IRIs
 # NOTE: These prefixes have been used to construct IRIs for existing
 # APPN instances in vocabularies. Do not change abbreviations for any
@@ -81,12 +83,13 @@ class_abbreviations:
   "appn:BiologicalMaterial": "bm"
   "appn:BiologicalUnit": "bu"
   "appn:BiologicalUnitType": "but"
-  "appn:ConceptScheme": "cs"
+  "skos:ConceptScheme": "cs"
   "appn:ControlledVariable": "cv"
   "appn:Deployment": "deploy"
   "appn:ExternalEvent": "event"
   "appn:GrowthFacility": "gf"
   "appn:GrowthFacilityType": "gft"
+  "appn:LocationSchema": "ls"
   "appn:MaterialSource": "ms"
   "appn:Observation": "obs"
   "appn:ObservationUnit": "ou"

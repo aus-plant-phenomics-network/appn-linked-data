@@ -14,6 +14,7 @@ from pydantic import (
     BaseModel,
     model_validator,
 )
+from rdflib import Graph
 
 from appn_linked_data import settings
 from appn_linked_data.ld_constants import (
@@ -22,7 +23,9 @@ from appn_linked_data.ld_constants import (
 )
 from appn_linked_data.ld_iri import (
     IRI,
+    Triple,
 )
+from appn_linked_data.ld_issue import ISSUE_TYPE, IssueType
 from appn_linked_data.ld_namespaces import (
     NamespaceDefinitionManager,
 )
@@ -53,8 +56,69 @@ class ExplicitTermsFilter(StrEnum):
 ### CompletionRule ############################################################
 
 
+class Dictionary:
+    """Placeholder to avoid circular definitions."""
+
+
 class CompletionRule(BaseModel):
-    """Base class for ReflexiveCompletionRule and any future completion rule types."""
+    """Base class for completion rule types."""
+
+    def complete_instance(
+        self,
+        instance_iri: IRI,
+        triples: list[Triple] | None = None,
+        graph: Graph | None = None,
+        dictionary: Dictionary | None = None,
+    ) -> list[Triple]:
+        """Review triples for instance and add any additional triples required by the rule.
+
+        Existing triples may be passed directly as a list or extracted from a
+        `Graph` or `Dictionary` by this method. If both are supplied, the
+        `Dictionary` will be used.
+
+        Subclasses return a list of triples to be added.
+
+        This method then adds the triples to the `Dictionary` or
+        `Graph` if supplied and then returns them to the caller.
+
+        :param instance_iri: IRI of the instance to be completed.
+        :param triples: List of triples for the instance - optional.
+        :param graph: `Graph` instance as alternative source for triples - optional.
+        :param dictionary: `Dictionary` instance as alternative source for triples - optional.
+        :return: List of new triples.
+        """
+        if triples is None:
+            if dictionary is not None:
+                triples = dictionary.list_triples_for_subject(instance_iri)  # type: ignore[attr-defined]
+            elif graph is not None:
+                triples = [
+                    Triple(s, p, o)
+                    for s, p, o in graph.triples((instance_iri, None, None))
+                ]
+
+        if triples is None:
+            return []
+
+        added_triples = self.process(instance_iri, triples)
+
+        if len(added_triples) > 0:
+            if dictionary is not None:
+                for triple in added_triples:
+                    dictionary.add_triple(triple)  # type: ignore[attr-defined]
+            elif graph is not None:
+                for triple in added_triples:
+                    graph.add(triple)  # type: ignore[arg-type]
+
+        return triples
+
+    def process(self, instance_iri: IRI, triples: list[Triple]) -> list[Triple]:  # noqa: ARG002
+        """Null implementation of the processing method implemented by subclasses.
+
+        :param instance_iri: IRI of the instance to be completed.
+        :param triples: List of triples for the instance.
+        :return: List of new triples.
+        """
+        return []
 
 
 ### ReflexiveCompletionRule ###################################################
@@ -64,6 +128,44 @@ class ReflexiveCompletionRule(CompletionRule):
     """Rule requiring existence of the specified property with the subject being the default object."""
 
     reflexive_property: IRI
+
+    def process(self, instance_iri: IRI, triples: list[Triple]) -> list[Triple]:
+        """Add reflexive property if no instance of the property currently exists.
+
+        :param instance_iri: IRI of the instance to be completed.
+        :param triples: List of triples for the instance.
+        :return: List of new triples.
+        """
+        if not any(triple._predicate == self.reflexive_property for triple in triples):
+            return [Triple(instance_iri, self.reflexive_property, instance_iri)]
+        return []
+
+
+### DefaultValueCompletionRule ################################################
+
+
+class DefaultValueCompletionRule(CompletionRule):
+    """Rule requiring existence of the specified property with a specified default object."""
+
+    default_value_property: IRI
+    default_value_object: IRI
+
+    def process(self, instance_iri: IRI, triples: list[Triple]) -> list[Triple]:
+        """Add default value for property if no instance of the property currently exists.
+
+        :param instance_iri: IRI of the instance to be completed.
+        :param triples: List of triples for the instance.
+        :return: List of new triples.
+        """
+        if not any(
+            triple.predicate == self.default_value_property for triple in triples
+        ):
+            return [
+                Triple(
+                    instance_iri, self.default_value_property, self.default_value_object
+                )
+            ]
+        return []
 
 
 ### Organisation ##############################################################
@@ -81,7 +183,7 @@ class Organisation(BaseModel):
 
     id: str
     name: str
-    ror: str
+    ror: str | None = None
     namespace: str | None = None
     prefix: str | None = None
 
@@ -89,7 +191,7 @@ class Organisation(BaseModel):
     def complete_organisation(self) -> Self:
         """Postprocess `Organisation` instance to supply defaultable values."""
         if self.namespace is None:
-            self.namespace = f"{APPN_VOCABULARY_ROOT}{self.id}"
+            self.namespace = f"{APPN_VOCABULARY_ROOT}{self.id}/"
         if self.prefix is None:
             self.prefix = self.id.lower()
         return self
@@ -125,7 +227,9 @@ class LinkedDataControlSettings(BaseModel):
     column_aliases: dict[str, str] = {}
     """Mappings for column names to override how columns in Excel spreadsheets are interpreted."""
 
-    completion_rules: dict[IRI, list[ReflexiveCompletionRule]] = {}
+    completion_rules: dict[
+        IRI, list[ReflexiveCompletionRule | DefaultValueCompletionRule]
+    ] = {}
     """Rules to enforce the properties associated with instances of a class."""
 
     class_abbreviations: dict[IRI, str] = {}
@@ -508,7 +612,7 @@ class LinkedDataSettings:
         return self.settings.domain_range_properties.copy()
 
     def get_property_range_classes(self) -> dict[IRI, dict[IRI, IRI]]:
-        """Get classes to expect when processing specified properties for specific classes.
+        """Get classes to expect when processing specific properties for specific classes.
 
         Property values will be converted to IRI references when the specified
         domain class and property are used.
@@ -517,6 +621,21 @@ class LinkedDataSettings:
             property names to range class IRIs
         """
         return self.settings.property_range_classes.copy()
+
+    def get_property_range_class(self, domain_class: IRI, property_: IRI) -> IRI | None:
+        """Get class to expect when processing specified property for specified class.
+
+        :param domain_class: IRI for class of domain object.
+        :param property_: IRI for property.
+        :return: IRI for desired range class if specified, else None.
+        """
+        property_range_classes = self.settings.property_range_classes
+        if (
+            domain_class in property_range_classes
+            and property_ in property_range_classes[domain_class]
+        ):
+            return property_range_classes[domain_class][property_]
+        return None
 
     def get_ro_crate_table_classes(self) -> list[IRI]:
         """Get names of classes that should be serialised to CSV tables in RO-Crates.
@@ -563,7 +682,7 @@ class LinkedDataSettings:
         """
         return self.organisations.copy()
 
-    def get_organisation_by_id(self, organisation_id: str) -> Organisation | None:
+    def get_organisation_by_id(self, organisation_id: str) -> Organisation:
         """Convenience method to retrieve a single `Organisation` by its id.
 
         :return: `Organisation` for given id, if defined
@@ -571,7 +690,12 @@ class LinkedDataSettings:
         organisations = self.get_organisations()
         if organisation_id in organisations:
             return organisations[organisation_id]
-        return None
+        logger.error(
+            "Request received for unknown organisation %s",
+            organisation_id,
+            extra={ISSUE_TYPE: IssueType.BAD_VALUE},
+        )
+        return Organisation(id=organisation_id, name="UNKNOWN ORGANISATION")
 
     def get_appn(self) -> Organisation:
         """Convenience method to retrieve the APPN central `Organisation`.

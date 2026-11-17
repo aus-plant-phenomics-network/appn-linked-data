@@ -180,7 +180,7 @@ EXPLORER_RESULTS: dict[str, str] = {}
 def explorer_results() -> dict[str, str]:
     if len(EXPLORER_RESULTS) < len(EXPLORER_TESTS):
         with Popen(  # noqa: S603 RUF100
-            ["python", "src/appn_linked_data/explorer.py", "-a", "au"],  # noqa: S607
+            ["python", "src/appn_linked_data/explorer.py", "-a", "au"],  # noqa: S607 RUF100
             stdin=PIPE,
             stdout=PIPE,
             stderr=STDOUT,
@@ -202,6 +202,7 @@ def explorer_results() -> dict[str, str]:
                         break
                 elif len(line) > 0:
                     test_response += f"{line}\n"
+    print(EXPLORER_RESULTS)  # noqa: T201
     return EXPLORER_RESULTS
 
 

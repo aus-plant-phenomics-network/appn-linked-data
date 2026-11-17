@@ -1,0 +1,39 @@
+# Build vocabularies from spreadsheets
+name: Generate Vocabularies
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - src/vocabulary_templates/*.xlsx
+
+# Least privilege at the workflow level; widen per job, never here (§3.11).
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Generate turtle vocabularies
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # Matrix across every version the project claims to support (§3.11).
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38  # v5.4.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: make install
+
+      - name: Build
+        run: python src/appn_linked_data/vocabulariser.py

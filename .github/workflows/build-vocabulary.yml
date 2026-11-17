@@ -5,8 +5,8 @@ on:
   workflow_dispatch:
   push:
     branches: [parser]
-    # paths:
-    #   - src/vocabulary_templates/*.xlsx
+    paths:
+      - src/vocabulary_templates/*.xlsx
 
 # Least privilege at the workflow level; widen per job, never here (§3.11).
 permissions:

@@ -8,14 +8,15 @@ from pathlib import Path
 from subprocess import PIPE, Popen
 
 import pytest
+from appn_logging import collect_records
 
 from appn_linked_data import (
     APPN_SCHEMA,
     APPN_VOCABULARY,
     IRI,
     Dictionary,
-    IssueHandler,
 )
+from appn_linked_data.ld_issue import ISSUE_TYPE
 
 # These tests run explorer.py in a separate process, so they belong in the
 # integration stage (pyproject.toml: "crosses a real boundary").
@@ -36,7 +37,7 @@ def test_parser() -> None:
         report_path.unlink()
 
     with (
-        IssueHandler() as handler,
+        collect_records(key=ISSUE_TYPE) as logged_issues,
         Popen(  # noqa: S603 RUF100
             [  # noqa: S607
                 "python",
@@ -61,7 +62,7 @@ def test_parser() -> None:
         assert b"ERROR" not in err
         assert turtle_path.exists()
         assert report_path.exists()
-        assert len(handler.get_issues()) == 0
+        assert len(list(logged_issues)) == 0
         inspector = Dictionary()
         inspector.load(TEST_NAMESPACE, turtle_path, TEST_PREFIX)
         instances = inspector.list_unique_subjects(namespace=TEST_NAMESPACE)

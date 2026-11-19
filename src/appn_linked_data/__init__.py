@@ -39,7 +39,6 @@ from appn_linked_data.ld_iri import (
     TriplePosition,
 )
 from appn_linked_data.ld_issue import (
-    IssueHandler,
     IssueType,
 )
 from appn_linked_data.ld_namespaces import (
@@ -93,7 +92,6 @@ __all__ = [
     "DictParser",
     "Dictionary",
     "ExplicitTermsFilter",
-    "IssueHandler",
     "IssueType",
     "LinkedDataSettings",
     "NamespaceDefinition",

@@ -11,9 +11,9 @@ import textwrap
 from pathlib import Path
 from typing import Any
 
-from appn_logging import configure_logging
+from appn_logging import collect_records, configure_logging
 
-from appn_linked_data.ld_issue import IssueHandler
+from appn_linked_data.ld_issue import ISSUE_TYPE, IssueType
 from appn_linked_data.ld_parser import ExcelParser, OutputFormat
 from appn_linked_data.ld_settings import (
     LinkedDataSettings,
@@ -141,7 +141,7 @@ if __name__ == "__main__":
     prefix = args[ARG_PREFIX]
     organisation = settings.get_organisation_by_id(args[ARG_ORGANISATION])
 
-    with IssueHandler() as issue_handler:
+    with collect_records(key=ISSUE_TYPE) as logged_issues:
         parser = ExcelParser(
             organisation, generate_concepts=False, namespace=namespace, prefix=prefix
         )
@@ -154,7 +154,15 @@ if __name__ == "__main__":
 
         report_path = spreadsheet.parent / f"{spreadsheet.stem}_report.txt"
         with report_path.open("w") as report:
-            issues = issue_handler.get_issues(True)
+            issues: dict[int, dict[IssueType, list[logging.LogRecord]]] = {}
+            for log_record in logged_issues:
+                levelno = log_record.levelno
+                if levelno not in issues:
+                    issues[levelno] = {}
+                issue_type = log_record.__dict__[ISSUE_TYPE]
+                if issue_type not in issues[levelno]:
+                    issues[levelno][issue_type] = []
+                issues[levelno][issue_type].append(log_record)
             if len(issues) == 0:
                 report.write(
                     f"No issues detected generating linked data for {organisation.name} dataset {namespace}\n"

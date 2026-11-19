@@ -55,6 +55,7 @@ dev = [
     "types-python-dateutil",
     "types-PyYAML",
     "pandas-stubs",
+    "appn_logging",
 ]
 
 # [project.scripts]

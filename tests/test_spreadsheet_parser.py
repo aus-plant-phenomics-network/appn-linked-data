@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from subprocess import PIPE, STDOUT, Popen
+from subprocess import PIPE, Popen
 
 import pytest
 
@@ -51,12 +51,14 @@ def test_parser() -> None:
             ],
             stdin=PIPE,
             stdout=PIPE,
-            stderr=STDOUT,
+            stderr=PIPE,
         ) as parser,
     ):
-        out, _ = parser.communicate()
+        out, err = parser.communicate()
         assert len(out) == 0
-
+        assert b"INFO" in err
+        assert b"WARN" not in err
+        assert b"ERROR" not in err
         assert turtle_path.exists()
         assert report_path.exists()
         assert len(handler.get_issues()) == 0

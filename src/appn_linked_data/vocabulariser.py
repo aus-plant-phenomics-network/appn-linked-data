@@ -12,19 +12,20 @@ import textwrap
 from pathlib import Path
 from typing import Any
 
+from appn_logging import collect_records, configure_logging
+
 from appn_linked_data.ld_constants import (
     CENTRAL_ORGANISATION,
 )
-from appn_linked_data.ld_issue import ISSUE_TYPE, IssueHandler, IssueType
+from appn_linked_data.ld_issue import ISSUE_TYPE, IssueType
 from appn_linked_data.ld_parser import ExcelParser, OutputFormat
 from appn_linked_data.ld_settings import (
     LinkedDataSettings,
 )
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler())
 
+configure_logging()
 
 ### process_argv ##############################################################
 
@@ -136,7 +137,7 @@ if __name__ == "__main__":
             excel_spreadsheet = f"{EXCEL_SHEET_BASENAME}{node}{EXCEL_SHEET_SUFFIX}"
             excel_path = SOURCE_PATH / excel_spreadsheet
 
-            with IssueHandler() as issue_handler:
+            with collect_records(key=ISSUE_TYPE) as logged_issues:
                 if not excel_path.exists():
                     logger.error(
                         "Excel path %s invalid",
@@ -167,7 +168,15 @@ if __name__ == "__main__":
 
                 report_path = BUILD_PATH / f"{node}_report.txt"
                 with report_path.open("w") as report:
-                    issues = issue_handler.get_issues(True)
+                    issues: dict[int, dict[IssueType, list[logging.LogRecord]]] = {}
+                    for log_record in logged_issues:
+                        levelno = log_record.levelno
+                        if levelno not in issues:
+                            issues[levelno] = {}
+                        issue_type = log_record.__dict__[ISSUE_TYPE]
+                        if issue_type not in issues[levelno]:
+                            issues[levelno][issue_type] = []
+                        issues[levelno][issue_type].append(log_record)
                     if len(issues) == 0:
                         report.write(
                             f"No issues detected generating vocabulary for {organisation.name} at {timestamp}\n"

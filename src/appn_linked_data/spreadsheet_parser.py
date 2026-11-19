@@ -11,6 +11,8 @@ import textwrap
 from pathlib import Path
 from typing import Any
 
+from appn_logging import configure_logging
+
 from appn_linked_data.ld_issue import IssueHandler
 from appn_linked_data.ld_parser import ExcelParser, OutputFormat
 from appn_linked_data.ld_settings import (
@@ -123,6 +125,8 @@ VOCABULARY_BASENAME = "_vocabulary"
 ### MAIN PROGRAM ##############################################################
 
 if __name__ == "__main__":
+    configure_logging()
+
     settings = LinkedDataSettings()
 
     args = process_argv(sys.argv, settings)

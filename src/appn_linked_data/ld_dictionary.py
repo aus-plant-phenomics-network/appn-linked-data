@@ -900,7 +900,7 @@ class Dictionary:
         Results may optionally be filtered to matches within a specified
         namespace.
 
-        NOTE: At present, this is case-sensitive.
+        The search is case-insensitive.
 
         :param class_iri: String IRI or `IRI` for class
         :param name: Unqualified name to find
@@ -911,17 +911,48 @@ class Dictionary:
         """
         class_iri = IRI(class_iri)
         cache_key = f"instances-class-name|{class_iri}|{name}|{check_alternate_names}|{namespace}"
-        query_strings = [
-            f"?q rdf:type <{class_iri}> . {{ ?q schema:name '{name}'@en }} UNION {{ ?q schema:name '{name}'}}."
-        ]
-        query_strings.append(
-            f"?q rdf:type <{class_iri}> .  {{ ?q rdfs:label '{name}'@en }} UNION {{ ?q rdfs:label '{name}'}} UNION {{ ?q skos:prefLabel '{name}'@en}} UNION {{ ?q skos:prefLabel '{name}'}}."
-        )
+        if cache_key in self.cache:
+            return self.cache[cache_key]  # type: ignore[return-value]
+
+        lower_name = name.lower()
+
+        matches: list[IRI] = []
+        for values in self.query(
+            f"""
+                SELECT ?q ?n ?p ?l
+                WHERE
+                {{
+                    ?q rdf:type <{class_iri}>.
+                    OPTIONAL{{ ?q schema:name ?n . }}
+                    OPTIONAL{{ ?q skos:prefLabel ?p . }}
+                    OPTIONAL{{ ?q rdfs:label ?l . }}
+                }}
+            """
+        ):
+            for value in values[1:]:
+                if str(value).lower() == lower_name:
+                    matches.append(values[0])  # type: ignore[arg-type]
+                    break
+
         if check_alternate_names:
-            query_strings.append(
-                f"?q rdf:type <{class_iri}> .  {{ ?q schema:alternateName '{name}'@en }} UNION {{ ?q schema:alternateName '{name}'}} UNION {{ ?q skos:altLabel '{name}'@en }} UNION {{ ?q skos:altLabel '{name}'}}."
-            )
-        return self.list_iris(query_strings, cache_key, namespace=namespace)
+            for values in self.query(
+                f"""
+                    SELECT ?q ?an ?al
+                    WHERE
+                    {{
+                        ?q rdf:type <{class_iri}>.
+                        OPTIONAL{{ ?q schema:alternateName ?an . }}
+                        OPTIONAL{{ ?q skos:altLabel ?al . }}
+                    }}
+                """
+            ):
+                for value in values[1:]:
+                    if str(value).lower() == lower_name:
+                        matches.append(values[0])  # type: ignore[arg-type]
+                        break
+
+        self.cache[cache_key] = matches
+        return matches
 
     def list_instances_by_name(
         self,

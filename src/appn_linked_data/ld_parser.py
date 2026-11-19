@@ -4,7 +4,7 @@
 
 Public access is via the `DictParser` class which handles dictionaries defining
 instances of a single schema class on behalf of a single `Organisation` and via
-the 'ExcelVocabularyParser` class which handles collections of definitions
+the 'ExcelParser` class which handles collections of definitions
 stored in an Excel spreadsheet.
 """
 
@@ -55,7 +55,10 @@ from appn_linked_data.ld_iri import (
     Triple,
 )
 from appn_linked_data.ld_issue import ISSUE_TYPE, IssueType
-from appn_linked_data.ld_namespaces import NamespaceDefinitionManager
+from appn_linked_data.ld_namespaces import (
+    NamespaceDefinition,
+    NamespaceDefinitionManager,
+)
 from appn_linked_data.ld_settings import (
     LinkedDataSettings,
     Organisation,
@@ -68,8 +71,8 @@ logger.setLevel(logging.INFO)
 NULL_VALUES = [None, np.nan, ""]
 
 # Values treated as True or False when parsing strings to booleans.
-TRUE_STRINGS = ["true", "t", "yes", "y"]
-FALSE_STRINGS = ["false", "f", "no", "n"]
+TRUE_STRINGS = ["true", "t", "yes", "y", "1"]
+FALSE_STRINGS = ["false", "f", "no", "n", "0"]
 
 # Regex for removing trailing integers.
 TRAILING_INTEGER_PATTERN = re.compile(r"[0-9]+$")
@@ -169,9 +172,12 @@ class PropertyHandler:
                 if (isinstance(value, str) and value.startswith("http"))
                 else Literal(value)
             )
+
         # If the range class is for an XML type, convert the value.
         elif self.range_class.ns == XML_SCHEMA:
             value = self.get_xml_value(self.range_class, value)
+            logger.debug("XML value %s (type %s)", str(value), str(type(value)))
+
         # If a range class is expected and the value is a string, either map the
         # value to a known IRI from the embedded instances or from the dictionary
         # or to a new IRI (which should be described elsewhere in the source being
@@ -201,11 +207,12 @@ class PropertyHandler:
         self.parser.add(subject_iri, self.target_property, value)
         for expanded_property in self.expanded_properties:
             if expanded_property == SKOS_PREF_LABEL:
-                self.parser.add(
-                    subject_iri,
-                    SKOS_PREF_LABEL,
-                    Literal(f"{value!s} ({self.parser.target_class.name})"),
-                )
+                if self.parser.generate_concepts:
+                    self.parser.add(
+                        subject_iri,
+                        SKOS_PREF_LABEL,
+                        Literal(f"{value!s} ({self.parser.target_class.name})"),
+                    )
             else:
                 self.parser.add(subject_iri, expanded_property, value)
 
@@ -238,10 +245,11 @@ class PropertyHandler:
             if value_class == XML_BOOLEAN:
                 if isinstance(value, bool):
                     return Literal(value)
-                if isinstance(value, str) and (
-                    value.lower() in TRUE_STRINGS or value.lower() in FALSE_STRINGS
-                ):
-                    return Literal(True)
+                if isinstance(value, str):
+                    if value.lower() in TRUE_STRINGS:
+                        return Literal(True)
+                    if value.lower() in FALSE_STRINGS:
+                        return Literal(False)
                 # Otherwise drop through.
             else:
                 logger.critical(
@@ -657,6 +665,7 @@ class DictParser:
                         graph=self.graph,
                         generate_concepts=self.generate_concepts,
                         is_embedded=True,
+                        namespace=self.namespace,
                     )
                     embedded_parsers[embedded_parser.required_prefix] = embedded_parser
         return embedded_parsers
@@ -859,13 +868,13 @@ class OutputFormat(StrEnum):
     """Simple class for vocabulary output formats."""
 
     TURTLE = "ttl"
-    JSON = "json"
+    JSONLD = "json-ld"
 
 
-### ExcelVocabularyParser #####################################################
+### ExcelParser #####################################################
 
 
-class ExcelVocabularyParser:
+class ExcelParser:
     """Parser to generate RDF vocabularies from Excel spreadsheets.
 
     This class expects spreadsheets with sheet names matching the names
@@ -878,7 +887,14 @@ class ExcelVocabularyParser:
     """
 
     def __init__(
-        self, organisation: Organisation, appn_vocabulary_path: Path | None = None
+        self,
+        organisation: Organisation,
+        *,
+        appn_vocabulary_path: Path | None = None,
+        generate_concepts: bool = False,
+        load_organisation_vocabulary: bool = True,
+        namespace: str | None = None,
+        prefix: str | None = None,
     ) -> None:
         """Initialise parser.
 
@@ -889,6 +905,9 @@ class ExcelVocabularyParser:
             regenerating all vocabularies.
         """
         self.organisation = organisation
+        self.generate_concepts = generate_concepts
+        self.namespace = self.organisation.namespace if namespace is None else namespace
+        self.prefix = prefix
 
         # Load schemas that will be used in the processing. For any node
         # vocabulary, include the current APPN central vocabulary so its
@@ -899,6 +918,8 @@ class ExcelVocabularyParser:
         self.dictionary.load(DC_SCHEMA)
         if organisation.id != CENTRAL_ORGANISATION:
             self.dictionary.load(APPN_VOCABULARY, asset_path=appn_vocabulary_path)
+        if load_organisation_vocabulary:
+            self.dictionary.load(organisation.namespace)
         self.dictionary.import_references()
 
         # Create a graph to contain the new vocabulary and initialise the
@@ -922,7 +943,19 @@ class ExcelVocabularyParser:
         if organisation.id != CENTRAL_ORGANISATION:
             appn = LinkedDataSettings().get_appn()
             self.graph.bind(appn.prefix, appn.namespace)
+        if load_organisation_vocabulary:
+            self.graph.bind(organisation.prefix, organisation.namespace)
+        if namespace is not None and prefix is not None:
+            self.graph.bind(prefix, namespace)
 
+        if (
+            self.namespace
+            not in NamespaceDefinitionManager().get_namespace_dictionary()
+            and self.prefix is not None
+        ):
+            NamespaceDefinitionManager().add_namespace_definition(
+                NamespaceDefinition(namespace=self.namespace, prefix=self.prefix)
+            )
         # Convenience dictionary for checking class names.
         self.appn_classes_by_name = {
             c.name: c for c in self.dictionary.list_classes(namespace=APPN_SCHEMA)
@@ -954,7 +987,8 @@ class ExcelVocabularyParser:
                         appn_class,
                         self.organisation,  # type: ignore[arg-type]
                         graph=self.graph,
-                        generate_concepts=True,
+                        generate_concepts=self.generate_concepts,
+                        namespace=self.namespace,
                     )
 
                     try:
@@ -1007,12 +1041,8 @@ class ExcelVocabularyParser:
         """
         latest_version = Dictionary(self.graph)
 
-        subjects = latest_version.list_unique_subjects(
-            namespace=self.organisation.namespace
-        )
-        objects = latest_version.list_unique_objects(
-            namespace=self.organisation.namespace
-        )
+        subjects = latest_version.list_unique_subjects(namespace=self.namespace)
+        objects = latest_version.list_unique_objects(namespace=self.namespace)
 
         missing = [o for o in objects if o not in subjects]
         for iri in missing:
@@ -1038,62 +1068,66 @@ class ExcelVocabularyParser:
         """
         all_present = True
 
-        published_version = Dictionary()
-        published_version.load(self.organisation.namespace)  # type: ignore[arg-type]
+        # Only check existing terms for node vocabularies.
+        if self.organisation.namespace == self.namespace:
+            published_version = Dictionary()
+            published_version.load(self.organisation.namespace)  # type: ignore[arg-type]
 
-        latest_version = Dictionary(self.graph)
+            latest_version = Dictionary(self.graph)
 
-        published_instances = published_version.list_unique_subjects()
-        published_type_dictionary = self.get_types_for_instances(published_version)
+            published_instances = published_version.list_unique_subjects()
+            published_type_dictionary = self.get_types_for_instances(published_version)
 
-        latest_instances = latest_version.list_unique_subjects()
-        latest_type_dictionary = self.get_types_for_instances(latest_version)
+            latest_instances = latest_version.list_unique_subjects()
+            latest_type_dictionary = self.get_types_for_instances(latest_version)
 
-        for instance in published_instances:
-            if instance not in latest_instances:
-                all_present = False
-                logger.warning(
-                    "Published version of vocabulary includes a term %s - adding to the new version",
-                    instance.curie,
-                    extra={ISSUE_TYPE: IssueType.MISSING_INSTANCE},
-                )
-                if add_missing_terms:
-                    for triple in published_version.list_triples_for_subject(instance):
-                        latest_version.add_triple(triple)
-            else:
-                missing_types: list[IRI] = sorted(
-                    published_type
-                    for published_type in published_type_dictionary[instance]
-                    if published_type not in latest_type_dictionary[instance]
-                )
-                # Ignore cases where the previously reported class is a superclass for one of the
-                # reported classes
-                reportable_types: list[IRI] = []
-                for missing_type in missing_types:
-                    subclasses = latest_version.list_subclasses(missing_type)
-                    if not any(
-                        subclass in latest_type_dictionary[instance]
-                        for subclass in subclasses
-                    ):
-                        reportable_types.append(missing_type)
-                if len(reportable_types) > 0:
+            for instance in published_instances:
+                if instance not in latest_instances:
                     all_present = False
                     logger.warning(
-                        "Published term %s has missing types: %s - adding these to the new version",
+                        "Published version of vocabulary includes a term %s - adding to the new version",
                         instance.curie,
-                        ", ".join(
-                            [
-                                reportable_type.curie
-                                for reportable_type in reportable_types
-                            ]
-                        ),
-                        extra={ISSUE_TYPE: IssueType.MISSING_INSTANCE_TYPE},
+                        extra={ISSUE_TYPE: IssueType.MISSING_INSTANCE},
                     )
                     if add_missing_terms:
-                        for missing_type in missing_types:
-                            latest_version.add_triple(
-                                Triple(instance, RDF_TYPE, missing_type)
-                            )
+                        for triple in published_version.list_triples_for_subject(
+                            instance
+                        ):
+                            latest_version.add_triple(triple)
+                else:
+                    missing_types: list[IRI] = sorted(
+                        published_type
+                        for published_type in published_type_dictionary[instance]
+                        if published_type not in latest_type_dictionary[instance]
+                    )
+                    # Ignore cases where the previously reported class is a superclass for one of the
+                    # reported classes
+                    reportable_types: list[IRI] = []
+                    for missing_type in missing_types:
+                        subclasses = latest_version.list_subclasses(missing_type)
+                        if not any(
+                            subclass in latest_type_dictionary[instance]
+                            for subclass in subclasses
+                        ):
+                            reportable_types.append(missing_type)
+                    if len(reportable_types) > 0:
+                        all_present = False
+                        logger.warning(
+                            "Published term %s has missing types: %s - adding these to the new version",
+                            instance.curie,
+                            ", ".join(
+                                [
+                                    reportable_type.curie
+                                    for reportable_type in reportable_types
+                                ]
+                            ),
+                            extra={ISSUE_TYPE: IssueType.MISSING_INSTANCE_TYPE},
+                        )
+                        if add_missing_terms:
+                            for missing_type in missing_types:
+                                latest_version.add_triple(
+                                    Triple(instance, RDF_TYPE, missing_type)
+                                )
 
         return all_present
 
@@ -1127,12 +1161,12 @@ class ExcelVocabularyParser:
         valid = self.verify_existing_terms()
         return self.verify_referenced_objects() and valid
 
-    def serialize(self, vocabulary_path: Path) -> bool:
+    def serialize(self, vocabulary_path: Path, output_format: str = "ttl") -> bool:
         """Write the vocabulary to a file.
 
         :param vocabulary_path: Path for output file.
         :param format: Specifies linked data output format, with Turtle as default.
         :return: True if successful.
         """
-        self.graph.serialize(destination=vocabulary_path)
+        self.graph.serialize(destination=vocabulary_path, format=output_format)
         return True

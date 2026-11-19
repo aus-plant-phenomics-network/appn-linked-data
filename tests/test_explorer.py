@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Tests for `appn_linked_data.ld_explorer`."""
+"""Tests for `appn_linked_data.explorer`."""
 
 from __future__ import annotations
 

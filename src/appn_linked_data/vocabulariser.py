@@ -16,7 +16,7 @@ from appn_linked_data.ld_constants import (
     CENTRAL_ORGANISATION,
 )
 from appn_linked_data.ld_issue import ISSUE_TYPE, IssueHandler, IssueType
-from appn_linked_data.ld_parser import ExcelVocabularyParser, OutputFormat
+from appn_linked_data.ld_parser import ExcelParser, OutputFormat
 from appn_linked_data.ld_settings import (
     LinkedDataSettings,
 )
@@ -68,8 +68,10 @@ def process_argv(argv: list[str], settings: LinkedDataSettings) -> dict[str, Any
 
     if ARG_FORMAT not in args or args[ARG_FORMAT] is None:
         args[ARG_FORMAT] = [OutputFormat.TURTLE]
-    elif ARG_VALUE_ALL in args[ARG_FORMAT]:
-        args[ARG_FORMAT] = formats
+    else:
+        if ARG_VALUE_ALL in args[ARG_FORMAT]:
+            args[ARG_FORMAT] = formats
+        args[ARG_FORMAT] = [OutputFormat(arg) for arg in args[ARG_FORMAT]]
 
     if OutputFormat.TURTLE in args[ARG_FORMAT]:
         args[ARG_FORMAT].remove(OutputFormat.TURTLE)
@@ -143,8 +145,11 @@ if __name__ == "__main__":
                     )
                     break
 
-                parser = ExcelVocabularyParser(
-                    organisation, appn_vocabulary_path=appn_vocabulary_path
+                parser = ExcelParser(
+                    organisation,
+                    appn_vocabulary_path=appn_vocabulary_path,
+                    generate_concepts=True,
+                    load_organisation_vocabulary=False,
                 )
                 parser.parse(excel_path)
                 parser.validate()
@@ -169,12 +174,13 @@ if __name__ == "__main__":
                         )
                     else:
                         report.write(
-                            f"Issues detected generating vocabulary for {organisation.name} at {timestamp}\n\n"
+                            f"Issues detected generating vocabulary for {organisation.name} at {timestamp}\n"
                         )
 
-                        for log_level, issue_types in issues.items():
+                        for log_level in sorted(issues.keys(), reverse=True):
+                            issue_types = issues[log_level]
                             report.write(
-                                f"Issues at level: {logging.getLevelName(log_level).upper()}\n"
+                                f"\nIssues at level: {logging.getLevelName(log_level).upper()}\n"
                             )
                             for issue_type, log_records in issue_types.items():
                                 report.write(

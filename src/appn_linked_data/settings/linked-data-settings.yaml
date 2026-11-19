@@ -10,6 +10,7 @@
 # earlier in this list will take precedence over one with the same name listed
 # later.
 vocabulary_column_namespaces:
+  - "https://schema.plantphenomics.org.au/"
   - "http://schema.org/"
   - "http://www.w3.org/2004/02/skos/core#"
   - "http://purl.org/dc/terms/"
@@ -94,6 +95,7 @@ class_abbreviations:
   "appn:Observation": "obs"
   "appn:ObservationUnit": "ou"
   "appn:ObservedVariable": "ov"
+  "appn:Organisation": "org"
   "appn:PlatformType": "pt"
   "appn:ResearchActivity": "ra"
   "appn:SensorType": "st"
@@ -120,6 +122,14 @@ property_expansions:
 embedded_classes:
   "appn:ObservedVariable":
     - "appn:Method"
+  "appn:Study":
+    - "appn:Investigation"
+  "appn:Organisation":
+    - "appn:Role"
+  "appn:Person":
+    - "appn:Role"
+  "appn:GrowthFacility":
+    - "appn:SpatialLocation"
 
 # Properties specified for use when a property is required between an
 # instance of one (domain) class and an instance of a referenced (range)
@@ -128,15 +138,19 @@ embedded_classes:
 # it will be used. Otherwise, an error will be logged.
 domain_range_properties:
   "appn:GrowthFacility":
-    "appn:Sensor": "https://schema.plantphenomics.org.au/hosts"
+    "appn:Sensor": "appn:hosts"
+  "appn:Person":
+    "appn:Organisation": "appn:affiliation"
 
 # Classes specified to ensure that property values are mapped to IRIs
 # rather than treated as literal values.
 property_range_classes:
   "appn:GrowthFacility":
-    "appn:hasGrowthFacilityType": "https://schema.plantphenomics.org.au/GrowthFacilityType"
+    "appn:hasGrowthFacilityType": "appn:GrowthFacilityType"
   "appn:BiologicalMaterial":
-    "skos:broader": "https://schema.plantphenomics.org.au/BiologicalMaterial"
+    "skos:broader": "appn:BiologicalMaterial"
+  "appn:Role":
+    "appn:isRoleIn": "appn:Study"
 
 # Most classes are serialises as triples in RO-Crates, but some classes may be better
 # managed as CSV (via pandas DataFrames) or in both formats.

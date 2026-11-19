@@ -209,15 +209,19 @@ class Organisation(BaseModel):
     id: str
     name: str
     ror: str | None = None
-    namespace: str | None = None
-    prefix: str | None = None
+
+    # The following use empty strings as placeholders, but the model validator
+    # ensures they have real values.
+
+    namespace: str = ""
+    prefix: str = ""
 
     @model_validator(mode="after")
     def complete_organisation(self) -> Self:
         """Postprocess `Organisation` instance to supply defaultable values."""
-        if self.namespace is None:
+        if len(self.namespace) == 0:
             self.namespace = f"{APPN_VOCABULARY_ROOT}{self.id}/"
-        if self.prefix is None:
+        if len(self.prefix) == 0:
             self.prefix = self.id.lower()
         return self
 
@@ -615,14 +619,15 @@ class LinkedDataSettings:
     def get_domain_range_properties(self) -> dict[IRI, dict[IRI, IRI]]:
         """Get dictionary mapping domain class names to dictionaries mapping range class names to property IRIs.
 
-        This supports the use of embedded classes. The ExcelVocabularyParser
-        needs to create properties linking each primary class instance to
-        the embedded class instance, but the relevant column refers to its
-        relationship to the embedded class as its name (e.g. "methodName").
-        The way that the embedded (range) class instance is linked to the
-        primary (domain) class instance is not defined.
+        This supports the use of embedded classes. The ExcelParser
+        needs to create properties linking a primary class instance to
+        an embedded class instance, but the relevant column refers to the
+        relationship with the embedded class using the name property for
+        the embedded instance (e.g. "methodName"). The way that the
+        embedded (range) class instance is to be linked to the primary
+        (domain) class instance is not defined.
 
-        In most cases, only one property exists in the APPN schema that has
+        In most cases, only one property exists in the APPN schema has
         the primary class in its domain and the embedded class in its range.
         In such cases, the behaviour is to assume this is the intended
         property.

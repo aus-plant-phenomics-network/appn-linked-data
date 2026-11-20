@@ -11,6 +11,7 @@ from appn_linked_data import (
     IRI,
     SCHEMA_SCHEMA,
     SKOS_SCHEMA,
+    ClassOutputFormat,
     ExplicitTermsFilter,
     LinkedDataSettings,
     ReflexiveCompletionRule,
@@ -140,11 +141,15 @@ def test_property_range_classes(default_settings: LinkedDataSettings) -> None:
     assert property_range_classes[gf][hgft] == gft  # type: ignore[index]
 
 
-def test_ro_crate_table_classes(default_settings: LinkedDataSettings) -> None:
-    """Check get_ro_crate_table_classes."""
-    ro_crate_table_classes = default_settings.get_ro_crate_table_classes()
-    assert ro_crate_table_classes is not None
-    assert IRI(f"{APPN_SCHEMA}Observation") in ro_crate_table_classes
+def test_formats_for_class_triples(default_settings: LinkedDataSettings) -> None:
+    """Check get_formats_for_class_triples."""
+    formats_for_class_triples = default_settings.get_formats_for_class_triples()
+    assert formats_for_class_triples is not None
+    assert IRI(f"{APPN_SCHEMA}Observation") in formats_for_class_triples
+    assert (
+        formats_for_class_triples[IRI(f"{APPN_SCHEMA}Observation")]
+        == ClassOutputFormat.DATAFRAME
+    )
 
 
 def test_organisations(default_settings: LinkedDataSettings) -> None:

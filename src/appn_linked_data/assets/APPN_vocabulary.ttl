@@ -25,7 +25,7 @@ appnid:bm_Barley a skos:Concept,
         <https://en.wikipedia.org/wiki/Barley> ;
     skos:inScheme appnid:cs_BiologicalMaterial ;
     skos:prefLabel "barley (BiologicalMaterial)" ;
-    appn:genus "Hordeum " ;
+    appn:genus "Hordeum" ;
     appn:scientificName "Hordeum vulgare" .
 
 appnid:bm_Cannabis a skos:Concept,
@@ -40,7 +40,7 @@ appnid:bm_Cannabis a skos:Concept,
         <https://en.wikipedia.org/wiki/Cannabis_sativa> ;
     skos:inScheme appnid:cs_BiologicalMaterial ;
     skos:prefLabel "cannabis (BiologicalMaterial)" ;
-    appn:genus "Cannabis " ;
+    appn:genus "Cannabis" ;
     appn:scientificName "Cannabis sativa" .
 
 appnid:bm_Tomato a skos:Concept,
@@ -55,7 +55,7 @@ appnid:bm_Tomato a skos:Concept,
         <https://en.wikipedia.org/wiki/Tomato> ;
     skos:inScheme appnid:cs_BiologicalMaterial ;
     skos:prefLabel "tomato (BiologicalMaterial)" ;
-    appn:genus "Solanum " ;
+    appn:genus "Solanum" ;
     appn:scientificName "Solanum lycopersicum" .
 
 appnid:bm_Wheat a skos:Concept,
@@ -69,14 +69,14 @@ appnid:bm_Wheat a skos:Concept,
         <https://en.wikipedia.org/wiki/Wheat> ;
     skos:inScheme appnid:cs_BiologicalMaterial ;
     skos:prefLabel "wheat (BiologicalMaterial)" ;
-    appn:genus "Triticum " ;
+    appn:genus "Triticum" ;
     appn:scientificName "Triticum aestivum" .
 
 appnid:but_Branch a skos:Concept,
         appn:BiologicalUnitType ;
-    dcterms:description "An ObservationUnit comprising a branch" ;
+    dcterms:description "A BiologicalUnit comprising a branch" ;
     dcterms:title "branch" ;
-    schema:description "An ObservationUnit comprising a branch" ;
+    schema:description "A BiologicalUnit comprising a branch" ;
     schema:name "branch" ;
     skos:exactMatch <http://purl.obolibrary.org/obo/PO_0025073> ;
     skos:inScheme appnid:cs_BiologicalUnitType ;
@@ -84,18 +84,28 @@ appnid:but_Branch a skos:Concept,
 
 appnid:but_Canopy a skos:Concept,
         appn:BiologicalUnitType ;
-    dcterms:description "An ObservationUnit comprising a canopy" ;
+    dcterms:description "A BiologicalUnit comprising a canopy" ;
     dcterms:title "canopy" ;
-    schema:description "An ObservationUnit comprising a canopy" ;
+    schema:description "A BiologicalUnit comprising a canopy" ;
     schema:name "canopy" ;
     skos:inScheme appnid:cs_BiologicalUnitType ;
     skos:prefLabel "canopy (BiologicalUnitType)" .
 
+appnid:but_Cohort a skos:Concept,
+        appn:BiologicalUnitType ;
+    dcterms:description "A BiologicalUnit comprising multiple BiologicalUnits grouped together based on some common property of interest, such as treatment or biological material" ;
+    dcterms:title "cohort" ;
+    schema:description "A BiologicalUnit comprising multiple BiologicalUnits grouped together based on some common property of interest, such as treatment or biological material" ;
+    schema:name "cohort" ;
+    skos:exactMatch <http://www.ebi.ac.uk/efo/EFO_0004445> ;
+    skos:inScheme appnid:cs_BiologicalUnitType ;
+    skos:prefLabel "cohort (BiologicalUnitType)" .
+
 appnid:but_Flower a skos:Concept,
         appn:BiologicalUnitType ;
-    dcterms:description "An ObservationUnit comprising a flower" ;
+    dcterms:description "A BiologicalUnit comprising a flower" ;
     dcterms:title "flower" ;
-    schema:description "An ObservationUnit comprising a flower" ;
+    schema:description "A BiologicalUnit comprising a flower" ;
     schema:name "flower" ;
     skos:exactMatch <http://purl.obolibrary.org/obo/PO_0009046> ;
     skos:inScheme appnid:cs_BiologicalUnitType ;
@@ -103,9 +113,9 @@ appnid:but_Flower a skos:Concept,
 
 appnid:but_Fruit a skos:Concept,
         appn:BiologicalUnitType ;
-    dcterms:description "An ObservationUnit comprising a fruit" ;
+    dcterms:description "A BiologicalUnit comprising a fruit" ;
     dcterms:title "fruit" ;
-    schema:description "An ObservationUnit comprising a fruit" ;
+    schema:description "A BiologicalUnit comprising a fruit" ;
     schema:name "fruit" ;
     skos:exactMatch <http://purl.obolibrary.org/obo/PO_0009001> ;
     skos:inScheme appnid:cs_BiologicalUnitType ;
@@ -113,9 +123,9 @@ appnid:but_Fruit a skos:Concept,
 
 appnid:but_Leaf a skos:Concept,
         appn:BiologicalUnitType ;
-    dcterms:description "An ObservationUnit comprising a leaf" ;
+    dcterms:description "A BiologicalUnit comprising a leaf" ;
     dcterms:title "leaf" ;
-    schema:description "An ObservationUnit comprising a leaf" ;
+    schema:description "A BiologicalUnit comprising a leaf" ;
     schema:name "leaf" ;
     skos:exactMatch <http://purl.obolibrary.org/obo/PO_0025034> ;
     skos:inScheme appnid:cs_BiologicalUnitType ;
@@ -123,9 +133,9 @@ appnid:but_Leaf a skos:Concept,
 
 appnid:but_Root a skos:Concept,
         appn:BiologicalUnitType ;
-    dcterms:description "An ObservationUnit comprising a root" ;
+    dcterms:description "A BiologicalUnit comprising a root" ;
     dcterms:title "root" ;
-    schema:description "An ObservationUnit comprising a root" ;
+    schema:description "A BiologicalUnit comprising a root" ;
     schema:name "root" ;
     skos:exactMatch <http://purl.obolibrary.org/obo/PO_0009005> ;
     skos:inScheme appnid:cs_BiologicalUnitType ;
@@ -133,9 +143,9 @@ appnid:but_Root a skos:Concept,
 
 appnid:but_Seed a skos:Concept,
         appn:BiologicalUnitType ;
-    dcterms:description "An ObservationUnit comprising a seed" ;
+    dcterms:description "A BiologicalUnit comprising a seed" ;
     dcterms:title "seed" ;
-    schema:description "An ObservationUnit comprising a seed" ;
+    schema:description "A BiologicalUnit comprising a seed" ;
     schema:name "seed" ;
     skos:exactMatch <http://purl.obolibrary.org/obo/PO_0009010> ;
     skos:inScheme appnid:cs_BiologicalUnitType ;
@@ -143,27 +153,29 @@ appnid:but_Seed a skos:Concept,
 
 appnid:but_Shoot a skos:Concept,
         appn:BiologicalUnitType ;
-    dcterms:description "An ObservationUnit comprising a shoot" ;
+    dcterms:description "A BiologicalUnit comprising a shoot" ;
     dcterms:title "shoot" ;
-    schema:description "An ObservationUnit comprising a shoot" ;
+    schema:description "A BiologicalUnit comprising a shoot" ;
     schema:name "shoot" ;
+    skos:broader <http://purl.obolibrary.org/obo/PO_0025029> ;
     skos:inScheme appnid:cs_BiologicalUnitType ;
     skos:prefLabel "shoot (BiologicalUnitType)" .
 
 appnid:but_Spike a skos:Concept,
         appn:BiologicalUnitType ;
-    dcterms:description "An ObservationUnit comprising a spike" ;
+    dcterms:description "A BiologicalUnit comprising a spike" ;
     dcterms:title "spike" ;
-    schema:description "An ObservationUnit comprising a spike" ;
+    schema:description "A BiologicalUnit comprising a spike" ;
     schema:name "spike" ;
+    skos:broader <http://purl.obolibrary.org/obo/PO_0030117> ;
     skos:inScheme appnid:cs_BiologicalUnitType ;
     skos:prefLabel "spike (BiologicalUnitType)" .
 
 appnid:but_Spikelet a skos:Concept,
         appn:BiologicalUnitType ;
-    dcterms:description "An ObservationUnit comprising a spikelet" ;
+    dcterms:description "A BiologicalUnit comprising a spikelet" ;
     dcterms:title "spikelet" ;
-    schema:description "An ObservationUnit comprising a spikelet" ;
+    schema:description "A BiologicalUnit comprising a spikelet" ;
     schema:name "spikelet" ;
     skos:exactMatch <http://purl.obolibrary.org/obo/PO_0009051> ;
     skos:inScheme appnid:cs_BiologicalUnitType ;
@@ -171,9 +183,9 @@ appnid:but_Spikelet a skos:Concept,
 
 appnid:but_Stem a skos:Concept,
         appn:BiologicalUnitType ;
-    dcterms:description "An ObservationUnit comprising a stem" ;
+    dcterms:description "A BiologicalUnit comprising a stem" ;
     dcterms:title "stem" ;
-    schema:description "An ObservationUnit comprising a stem" ;
+    schema:description "A BiologicalUnit comprising a stem" ;
     schema:name "stem" ;
     skos:exactMatch <http://purl.obolibrary.org/obo/PO_0009047> ;
     skos:inScheme appnid:cs_BiologicalUnitType ;
@@ -181,9 +193,9 @@ appnid:but_Stem a skos:Concept,
 
 appnid:but_WholePlant a skos:Concept,
         appn:BiologicalUnitType ;
-    dcterms:description "An ObservationUnit comprising a plant" ;
+    dcterms:description "A BiologicalUnit comprising a plant" ;
     dcterms:title "whole plant" ;
-    schema:description "An ObservationUnit comprising a plant" ;
+    schema:description "A BiologicalUnit comprising a plant" ;
     schema:name "whole plant" ;
     skos:exactMatch <http://purl.obolibrary.org/obo/PO_0000003> ;
     skos:inScheme appnid:cs_BiologicalUnitType ;
@@ -191,12 +203,21 @@ appnid:but_WholePlant a skos:Concept,
 
 appnid:gft_Cohort a skos:Concept,
         appn:GrowthFacilityType ;
-    dcterms:description "A cohort is a collection of material entities grouped together based on some common property of interest, such as age or disease stage" ;
+    dcterms:description "Deprecated. Do not use, see APPN BiologicalUnitType Cohort (https://id.plantphenomics.org.au/APPN/but_Cohort)" ;
     dcterms:title "cohort" ;
-    schema:description "A cohort is a collection of material entities grouped together based on some common property of interest, such as age or disease stage" ;
+    schema:description "Deprecated. Do not use, see APPN BiologicalUnitType Cohort (https://id.plantphenomics.org.au/APPN/but_Cohort)" ;
     schema:name "cohort" ;
     skos:inScheme appnid:cs_GrowthFacilityType ;
     skos:prefLabel "cohort (GrowthFacilityType)" .
+
+appnid:gft_Farm a skos:Concept,
+        appn:GrowthFacilityType ;
+    dcterms:description "Field site with one or more fields for crops." ;
+    dcterms:title "farm" ;
+    schema:description "Field site with one or more fields for crops." ;
+    schema:name "farm" ;
+    skos:inScheme appnid:cs_GrowthFacilityType ;
+    skos:prefLabel "farm (GrowthFacilityType)" .
 
 appnid:gft_Glasshouse a skos:Concept,
         appn:GrowthFacilityType ;
@@ -211,18 +232,18 @@ appnid:gft_Glasshouse a skos:Concept,
 
 appnid:gft_Pot a skos:Concept,
         appn:GrowthFacilityType ;
-    dcterms:description "A rounded container used to cultivate plant." ;
+    dcterms:description "A rounded container used to cultivate a plant." ;
     dcterms:title "pot" ;
-    schema:description "A rounded container used to cultivate plant." ;
+    schema:description "A rounded container used to cultivate a plant." ;
     schema:name "pot" ;
     skos:inScheme appnid:cs_GrowthFacilityType ;
     skos:prefLabel "pot (GrowthFacilityType)" .
 
 appnid:gft_ReachInGrowthChamber a skos:Concept,
         appn:GrowthFacilityType ;
-    dcterms:description "Conviron reach-in cabinets are compact growth chambers that provide precise environmental control for plant and biological experiments. Available models (PCG20, PCG-Flex, ATC60, Adaptis A1000) support a range of research applications, from standard growth studies to advanced, programmable environmental simulations." ;
+    dcterms:description "Reach-in growth chambers are compact growth chambers that provide precise environmental control for plant and biological experiments." ;
     dcterms:title "reach-in growth chamber" ;
-    schema:description "Conviron reach-in cabinets are compact growth chambers that provide precise environmental control for plant and biological experiments. Available models (PCG20, PCG-Flex, ATC60, Adaptis A1000) support a range of research applications, from standard growth studies to advanced, programmable environmental simulations." ;
+    schema:description "Reach-in growth chambers are compact growth chambers that provide precise environmental control for plant and biological experiments." ;
     schema:name "reach-in growth chamber" ;
     skos:altLabel "reach-in growth cabinet" ;
     skos:inScheme appnid:cs_GrowthFacilityType ;
@@ -230,24 +251,23 @@ appnid:gft_ReachInGrowthChamber a skos:Concept,
 
 appnid:gft_Rhizolysimiter a skos:Concept,
         appn:GrowthFacilityType ;
-    dcterms:description "A soil–plant experimental unit used to grow plants and facilitate the observation and measurement of root development and other below-ground processes in the root zone." ;
+    dcterms:description "Deprecated. Do not use, term replaced by APPN GrowthFacilityType Rhizolysimeter (https://id.plantphenomics.org.au/APPN/gft_BelowGroundPhenotypingUnit)" ;
     dcterms:title "rhizolysimiter" ;
-    schema:description "A soil–plant experimental unit used to grow plants and facilitate the observation and measurement of root development and other below-ground processes in the root zone." ;
+    schema:description "Deprecated. Do not use, term replaced by APPN GrowthFacilityType Rhizolysimeter (https://id.plantphenomics.org.au/APPN/gft_BelowGroundPhenotypingUnit)" ;
     schema:name "rhizolysimiter" ;
-    skos:altLabel "rhizobox",
-        "rhizotube" ;
+    skos:exactMatch appnid:gft_BelowGroundPhenotypingUnit ;
     skos:inScheme appnid:cs_GrowthFacilityType ;
     skos:prefLabel "rhizolysimiter (GrowthFacilityType)" .
 
 appnid:gft_WalkInGrowthRoom a skos:Concept,
         appn:GrowthFacilityType ;
-    dcterms:description "PSI walk-in chambers (BDW40, BDW80, MTPS144) are large controlled-environment growth rooms that enable precise regulation of temperature, lighting, humidity, and atmospheric conditions. They are designed for larger-scale plant experiments, supporting reproducible research from routine studies to advanced environmental simulations." ;
+    dcterms:description "Walk-in growth room are large controlled-environment growth rooms that enable precise regulation of temperature, lighting, humidity, and atmospheric conditions. They are designed for larger-scale plant experiments, supporting reproducible research from routine studies to advanced environmental simulations." ;
     dcterms:title "walk-in growth room" ;
-    schema:description "PSI walk-in chambers (BDW40, BDW80, MTPS144) are large controlled-environment growth rooms that enable precise regulation of temperature, lighting, humidity, and atmospheric conditions. They are designed for larger-scale plant experiments, supporting reproducible research from routine studies to advanced environmental simulations." ;
+    schema:description "Walk-in growth room are large controlled-environment growth rooms that enable precise regulation of temperature, lighting, humidity, and atmospheric conditions. They are designed for larger-scale plant experiments, supporting reproducible research from routine studies to advanced environmental simulations." ;
     schema:name "walk-in growth room" ;
-    skos:altLabel "Walk-in growth cabinet",
-        "controlled environment room",
-        "outdoor walk-in growth chamber" ;
+    skos:altLabel "controlled environment room",
+        "outdoor walk-in growth chamber",
+        "walk-in growth cabinet" ;
     skos:inScheme appnid:cs_GrowthFacilityType ;
     skos:prefLabel "walk-in growth room (GrowthFacilityType)" .
 
@@ -259,6 +279,18 @@ appnid:gft_WholeTreeChamber a skos:Concept,
     schema:name "whole tree chamber" ;
     skos:inScheme appnid:cs_GrowthFacilityType ;
     skos:prefLabel "whole tree chamber (GrowthFacilityType)" .
+
+appnid:ls_XYZLocationSchema a skos:Concept,
+        appn:LocationSchema ;
+    dcterms:description "Components of an XYZLocation definition" ;
+    dcterms:title "XYZ Location Schema" ;
+    schema:description "Components of an XYZLocation definition" ;
+    schema:name "XYZ Location Schema" ;
+    skos:inScheme appnid:cs_LocationSchema ;
+    skos:prefLabel "XYZ Location Schema (LocationSchema)" ;
+    appn:schemaFirstLevelName "row" ;
+    appn:schemaSecondLevelName "column" ;
+    appn:schemaThirdLevelName "level" .
 
 appnid:pc_PC1 a skos:Concept,
         appn:PhysicalContainmentLevel ;
@@ -407,7 +439,7 @@ appnid:scale_Centimeter a schema:DefinedTerm,
     schema:description "A length unit which is equal to one hundredth of a meter or 10^[-2] m." ;
     schema:name "centimeter" ;
     skos:altLabel "cm" ;
-    skos:exactMatch <http://qudt.org/vocab/unit/CentiM> ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/UO_0000015> ;
     skos:inScheme appnid:cs_Scale ;
     skos:prefLabel "centimeter (Scale)" .
 
@@ -419,7 +451,6 @@ appnid:scale_CubicMillimeter a schema:DefinedTerm,
     schema:description "A measure of volume in the metric system. One thousand ccs equal one liter." ;
     schema:name "cubic millimeter" ;
     skos:altLabel "mm3" ;
-    skos:exactMatch <http://qudt.org/vocab/unit/MilliM3> ;
     skos:inScheme appnid:cs_Scale ;
     skos:prefLabel "cubic millimeter (Scale)" .
 
@@ -430,7 +461,7 @@ appnid:scale_Day a schema:DefinedTerm,
     dcterms:title "day" ;
     schema:description "A time unit which is equal to 24 hours." ;
     schema:name "day" ;
-    skos:exactMatch <http://qudt.org/vocab/unit/DAY> ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/UO_0000033> ;
     skos:inScheme appnid:cs_Scale ;
     skos:prefLabel "day (Scale)" .
 
@@ -442,7 +473,7 @@ appnid:scale_Gram a schema:DefinedTerm,
     schema:description "A mass unit which is equal to one thousandth of a kilogram or 10^[-3] kg." ;
     schema:name "gram" ;
     skos:altLabel "g" ;
-    skos:exactMatch <http://qudt.org/vocab/unit/GM> ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/UO_0000021> ;
     skos:inScheme appnid:cs_Scale ;
     skos:prefLabel "gram (Scale)" .
 
@@ -454,7 +485,7 @@ appnid:scale_GramPerGram a schema:DefinedTerm,
     schema:description "A unit which is equal to 1 gram per 1 gram." ;
     schema:name "gram per gram" ;
     skos:altLabel "g/g" ;
-    skos:exactMatch <http://qudt.org/vocab/unit/KiloGM-PER-KiloGM> ;
+    skos:broader <http://purl.obolibrary.org/obo/UO_0000021> ;
     skos:inScheme appnid:cs_Scale ;
     skos:prefLabel "gram per gram (Scale)" .
 
@@ -477,7 +508,6 @@ appnid:scale_Integer a schema:DefinedTerm,
     dcterms:title "integer" ;
     schema:description "An integer is the number zero (0), a positive natural number (1, 2, 3, etc.) or a negative integer (−1, −2, −3, etc.)." ;
     schema:name "integer" ;
-    skos:exactMatch <http://qudt.org/vocab/unit/COUNT> ;
     skos:inScheme appnid:cs_Scale ;
     skos:prefLabel "integer (Scale)" .
 
@@ -522,7 +552,7 @@ appnid:scale_Milliliter a schema:DefinedTerm,
     schema:description "A volume unit which is equal to one thousandth of a liter or 10^[-3] L, or to 1 cubic centimeter." ;
     schema:name "milliliter" ;
     skos:altLabel "ml" ;
-    skos:exactMatch <http://qudt.org/vocab/unit/MilliL> ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/UO_0000098> ;
     skos:inScheme appnid:cs_Scale ;
     skos:prefLabel "milliliter (Scale)" .
 
@@ -533,8 +563,7 @@ appnid:scale_MilliliterPerDay a schema:DefinedTerm,
     dcterms:title "milliliter per day" ;
     schema:description "The total volume in milliliters used, taken, or produced over 24 hours." ;
     schema:name "milliliter per day" ;
-    skos:altLabel "ml/day " ;
-    skos:exactMatch <http://qudt.org/vocab/unit/MilliM-PER-DAY> ;
+    skos:altLabel "ml/day" ;
     skos:inScheme appnid:cs_Scale ;
     skos:prefLabel "milliliter per day (Scale)" .
 
@@ -546,7 +575,7 @@ appnid:scale_Millimeter a schema:DefinedTerm,
     schema:description "A length unit which is equal to one thousandth of a meter or 10^[-3] m." ;
     schema:name "millimeter" ;
     skos:altLabel "mm" ;
-    skos:exactMatch <http://qudt.org/vocab/unit/MilliM> ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/UO_0000016> ;
     skos:inScheme appnid:cs_Scale ;
     skos:prefLabel "millimeter (Scale)" .
 
@@ -557,7 +586,6 @@ appnid:scale_Pixel a schema:DefinedTerm,
     dcterms:title "pixel" ;
     schema:description "A pixel (px) is the smallest addressable component of a digital image, often used as a unit of length or area in digital imaging, graphics, and web design (Wikipedia)." ;
     schema:name "pixel" ;
-    skos:exactMatch <http://qudt.org/vocab/unit/PIXEL> ;
     skos:inScheme appnid:cs_Scale ;
     skos:prefLabel "pixel (Scale)" .
 
@@ -568,7 +596,7 @@ appnid:scale_Ratio a schema:DefinedTerm,
     dcterms:title "ratio" ;
     schema:description "A dimensionless ratio unit which, given a pair of quantities a and b, for which b is a multiple of a, denotes b by giving the multiplier (coefficient) c for a to result in b." ;
     schema:name "ratio" ;
-    skos:exactMatch <http://qudt.org/vocab/unit/ONE-PER-ONE> ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/UO_0010006> ;
     skos:inScheme appnid:cs_Scale ;
     skos:prefLabel "ratio (Scale)" .
 
@@ -580,7 +608,7 @@ appnid:scale_SquareMillimeter a schema:DefinedTerm,
     schema:description "An area unit which is equal to one millionth of a square meter or 10^[-6] m^[2]." ;
     schema:name "square millimeter" ;
     skos:altLabel "mm2" ;
-    skos:exactMatch <http://qudt.org/vocab/unit/MilliM2> ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/UO_0000082> ;
     skos:inScheme appnid:cs_Scale ;
     skos:prefLabel "square millimeter (Scale)" .
 
@@ -597,9 +625,9 @@ appnid:scale_Voxel a schema:DefinedTerm,
 
 appnid:st_Hyperspectral a skos:Concept,
         appn:SensorType ;
-    dcterms:description "A digital imaging device that captures images in a large number of contiguous, narrow spectral bands across a continuous spectral range." ;
+    dcterms:description "An imaging sensor that acquires image data in numerous contiguous narrow spectral bands across a continuous spectral range." ;
     dcterms:title "hyperspectral" ;
-    schema:description "A digital imaging device that captures images in a large number of contiguous, narrow spectral bands across a continuous spectral range." ;
+    schema:description "An imaging sensor that acquires image data in numerous contiguous narrow spectral bands across a continuous spectral range." ;
     schema:name "hyperspectral" ;
     skos:inScheme appnid:cs_SensorType ;
     skos:prefLabel "hyperspectral (SensorType)" .
@@ -624,27 +652,27 @@ appnid:st_LoadCell a skos:Concept,
 
 appnid:st_Multispectral a skos:Concept,
         appn:SensorType ;
-    dcterms:description "A digital imaging device that captures images in multiple discrete spectral bands spanning visible and/or non-visible wavelengths." ;
+    dcterms:description "An imaging sensor that acquires image data in multiple discrete spectral bands across the electromagnetic spectrum." ;
     dcterms:title "multispectral" ;
-    schema:description "A digital imaging device that captures images in multiple discrete spectral bands spanning visible and/or non-visible wavelengths." ;
+    schema:description "An imaging sensor that acquires image data in multiple discrete spectral bands across the electromagnetic spectrum." ;
     schema:name "multispectral" ;
     skos:inScheme appnid:cs_SensorType ;
     skos:prefLabel "multispectral (SensorType)" .
 
 appnid:st_RGB a skos:Concept,
         appn:SensorType ;
-    dcterms:description "A digital imaging device that captures visible light in three broad spectral bands corresponding to red, green, and blue (RGB) colour channels." ;
+    dcterms:description "An imaging sensor that captures visible light in red, green, and blue spectral bands to generate colour images." ;
     dcterms:title "RGB" ;
-    schema:description "A digital imaging device that captures visible light in three broad spectral bands corresponding to red, green, and blue (RGB) colour channels." ;
+    schema:description "An imaging sensor that captures visible light in red, green, and blue spectral bands to generate colour images." ;
     schema:name "RGB" ;
     skos:inScheme appnid:cs_SensorType ;
     skos:prefLabel "RGB (SensorType)" .
 
 appnid:st_RadiationStableXRay a skos:Concept,
         appn:SensorType ;
-    dcterms:description "An X-ray detector designed to resist radiation-induced degradation and maintain consistent imaging performance during prolonged exposure to X-ray radiation." ;
+    dcterms:description "An X-ray sensor designed to resist radiation-induced degradation and maintain consistent imaging performance during prolonged exposure to X-ray radiation." ;
     dcterms:title "radiation stable X-ray" ;
-    schema:description "An X-ray detector designed to resist radiation-induced degradation and maintain consistent imaging performance during prolonged exposure to X-ray radiation." ;
+    schema:description "An X-ray sensor designed to resist radiation-induced degradation and maintain consistent imaging performance during prolonged exposure to X-ray radiation." ;
     schema:name "radiation stable X-ray" ;
     skos:inScheme appnid:cs_SensorType ;
     skos:prefLabel "radiation stable X-ray (SensorType)" .
@@ -653,7 +681,27 @@ appnid:cs_BiocontainmentLevel a skos:ConceptScheme ;
     dcterms:description "Concept scheme including instances of the BiocontainmentLevel class from the Australian Plant Phenomics Network" ;
     dcterms:title "BiocontainmentLevel" ;
     schema:description "Concept scheme including instances of the BiocontainmentLevel class from the Australian Plant Phenomics Network" ;
-    schema:name "BiocontainmentLevel" .
+    schema:name "BiocontainmentLevel" ;
+    skos:prefLabel "BiocontainmentLevel" .
+
+appnid:cs_LocationSchema a skos:ConceptScheme ;
+    dcterms:description "Concept scheme including instances of the LocationSchema class from the Australian Plant Phenomics Network" ;
+    dcterms:title "LocationSchema" ;
+    schema:description "Concept scheme including instances of the LocationSchema class from the Australian Plant Phenomics Network" ;
+    schema:name "LocationSchema" ;
+    skos:prefLabel "LocationSchema" .
+
+appnid:gft_BelowGroundPhenotypingUnit a skos:Concept,
+        appn:GrowthFacilityType ;
+    dcterms:description "A soil–plant experimental unit used to grow plants and facilitate the observation and measurement of root development and other below-ground processes in the root zone." ;
+    dcterms:title "below-ground phenotyping unit" ;
+    schema:description "A soil–plant experimental unit used to grow plants and facilitate the observation and measurement of root development and other below-ground processes in the root zone." ;
+    schema:name "below-ground phenotyping unit" ;
+    skos:altLabel "rhizobox",
+        "rhizolysimeter",
+        "rhizotube" ;
+    skos:inScheme appnid:cs_GrowthFacilityType ;
+    skos:prefLabel "below-ground phenotyping unit (GrowthFacilityType)" .
 
 appnid:bm_Grain a skos:Concept,
         appn:BiologicalMaterial ;
@@ -684,40 +732,47 @@ appnid:cs_PlatformType a skos:ConceptScheme ;
     dcterms:description "Concept scheme including instances of the PlatformType class from the Australian Plant Phenomics Network" ;
     dcterms:title "PlatformType" ;
     schema:description "Concept scheme including instances of the PlatformType class from the Australian Plant Phenomics Network" ;
-    schema:name "PlatformType" .
+    schema:name "PlatformType" ;
+    skos:prefLabel "PlatformType" .
 
 appnid:cs_PhysicalContainmentLevel a skos:ConceptScheme ;
     dcterms:description "Concept scheme including instances of the PhysicalContainmentLevel class from the Australian Plant Phenomics Network" ;
     dcterms:title "PhysicalContainmentLevel" ;
     schema:description "Concept scheme including instances of the PhysicalContainmentLevel class from the Australian Plant Phenomics Network" ;
-    schema:name "PhysicalContainmentLevel" .
+    schema:name "PhysicalContainmentLevel" ;
+    skos:prefLabel "PhysicalContainmentLevel" .
 
 appnid:cs_BiologicalMaterial a skos:ConceptScheme ;
     dcterms:description "Concept scheme including instances of the BiologicalMaterial class from the Australian Plant Phenomics Network" ;
     dcterms:title "BiologicalMaterial" ;
     schema:description "Concept scheme including instances of the BiologicalMaterial class from the Australian Plant Phenomics Network" ;
-    schema:name "BiologicalMaterial" .
+    schema:name "BiologicalMaterial" ;
+    skos:prefLabel "BiologicalMaterial" .
 
 appnid:cs_SensorType a skos:ConceptScheme ;
     dcterms:description "Concept scheme including instances of the SensorType class from the Australian Plant Phenomics Network" ;
     dcterms:title "SensorType" ;
     schema:description "Concept scheme including instances of the SensorType class from the Australian Plant Phenomics Network" ;
-    schema:name "SensorType" .
+    schema:name "SensorType" ;
+    skos:prefLabel "SensorType" .
 
 appnid:cs_GrowthFacilityType a skos:ConceptScheme ;
     dcterms:description "Concept scheme including instances of the GrowthFacilityType class from the Australian Plant Phenomics Network" ;
     dcterms:title "GrowthFacilityType" ;
     schema:description "Concept scheme including instances of the GrowthFacilityType class from the Australian Plant Phenomics Network" ;
-    schema:name "GrowthFacilityType" .
+    schema:name "GrowthFacilityType" ;
+    skos:prefLabel "GrowthFacilityType" .
 
 appnid:cs_BiologicalUnitType a skos:ConceptScheme ;
     dcterms:description "Concept scheme including instances of the BiologicalUnitType class from the Australian Plant Phenomics Network" ;
     dcterms:title "BiologicalUnitType" ;
     schema:description "Concept scheme including instances of the BiologicalUnitType class from the Australian Plant Phenomics Network" ;
-    schema:name "BiologicalUnitType" .
+    schema:name "BiologicalUnitType" ;
+    skos:prefLabel "BiologicalUnitType" .
 
 appnid:cs_Scale a skos:ConceptScheme ;
     dcterms:description "Concept scheme including instances of the Scale class from the Australian Plant Phenomics Network" ;
     dcterms:title "Scale" ;
     schema:description "Concept scheme including instances of the Scale class from the Australian Plant Phenomics Network" ;
-    schema:name "Scale" .
+    schema:name "Scale" ;
+    skos:prefLabel "Scale" .

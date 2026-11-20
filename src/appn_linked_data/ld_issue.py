@@ -4,88 +4,11 @@
 
 from __future__ import annotations
 
-import logging
-from contextlib import AbstractContextManager
 from enum import StrEnum
-from typing import Any, Literal
 
 # Name for extra property to use in log records.
 
 ISSUE_TYPE = "issue_type"
-
-
-class IssueHandler(logging.Handler, AbstractContextManager):
-    """Handler to collect records including an issue type.
-
-    Intended for use as a context manager so collection of issue messages
-    is scoped to the period in which a task is running that requires
-    user-oriented messages to be collected.
-    """
-
-    def __init__(self, logger: logging.Logger | None = None) -> None:
-        """Set up dictionary to collect `LogRecord`s that include an `IssueType` in `extra`.
-
-        Issues are sorted by logging level and then by `IssueType`.
-
-        :param logger: The Logger to which the handler is to be added.
-        """
-        super().__init__(logging.INFO)
-
-        # Add as a handler to the specified logger or to the logger for the
-        # APPN linked data package.
-        if logger is None:
-            logger = logging.getLogger(__name__.split(".")[0])
-        self.logger: logging.Logger = logger
-        self.logger.addHandler(self)
-
-        # The issues dictionary groups first by logging level and then
-        # by LogIssue.
-        self.issues: dict[int, dict[IssueType, list[logging.LogRecord]]] = {}
-
-    def emit(self, record: logging.LogRecord) -> None:
-        """Store issue if it includes an IssueType.
-
-        Issues are organised by logging level and then by `IssueType`.
-
-        :param record: Log record to check and optionally store.
-        """
-        if ISSUE_TYPE in record.__dict__:
-            issue_type = record.__dict__[ISSUE_TYPE]
-            level = record.levelno
-            if level not in self.issues:
-                self.issues[level] = {}
-            if issue_type not in self.issues[level]:
-                self.issues[level][issue_type] = []
-            self.issues[level][issue_type].append(record)
-
-    def get_issues(
-        self, flush: bool = False
-    ) -> dict[int, dict[IssueType, list[logging.LogRecord]]]:
-        """Return current issues grouped by logging level and then byIssueType.
-
-        Optionally clear the dictionary on return.
-
-        :param flush: If true, clear the dictionary on return.
-        :return: Dictionary mapping logging levels to dictionaries mapping `IssueTypes` to lists of log records.
-        """
-        if flush:
-            issues = self.issues
-            self.issues = {}
-        else:
-            issues = self.issues.copy()
-        return issues
-
-    def close(self) -> None:
-        """Remove handler from logger."""
-        self.logger.removeHandler(self)
-        super().close()
-
-    def __exit__(self, *exc_details: Any) -> Literal[False]:
-        """Clean up."""
-        self.close()
-        return False
-
-
 ### IssueType #################################################################
 
 

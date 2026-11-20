@@ -4,7 +4,7 @@
 
 Public access is via the `DictParser` class which handles dictionaries defining
 instances of a single schema class on behalf of a single `Organisation` and via
-the 'ExcelVocabularyParser` class which handles collections of definitions
+the 'ExcelParser` class which handles collections of definitions
 stored in an Excel spreadsheet.
 """
 
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import re
+import warnings
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
@@ -55,7 +56,10 @@ from appn_linked_data.ld_iri import (
     Triple,
 )
 from appn_linked_data.ld_issue import ISSUE_TYPE, IssueType
-from appn_linked_data.ld_namespaces import NamespaceDefinitionManager
+from appn_linked_data.ld_namespaces import (
+    NamespaceDefinition,
+    NamespaceDefinitionManager,
+)
 from appn_linked_data.ld_settings import (
     LinkedDataSettings,
     Organisation,
@@ -68,11 +72,25 @@ logger.setLevel(logging.INFO)
 NULL_VALUES = [None, np.nan, ""]
 
 # Values treated as True or False when parsing strings to booleans.
-TRUE_STRINGS = ["true", "t", "yes", "y"]
-FALSE_STRINGS = ["false", "f", "no", "n"]
+TRUE_STRINGS = ["true", "t", "yes", "y", "1"]
+FALSE_STRINGS = ["false", "f", "no", "n", "0"]
 
 # Regex for removing trailing integers.
 TRAILING_INTEGER_PATTERN = re.compile(r"[0-9]+$")
+
+# Simplify typing
+type PropertyDictionary = dict[str, Any] | pd.Series[Any]
+
+# Keys for logging description of parsed structures. PARSER_KEYS should be
+# included in the `extra` dictionary for a LogRecord. The value should be
+# a dictionary mapping one or more of the other keys to the corresponding
+# IRI.
+PARSER_KEYS = "parser_keys"
+KEY_DOMAIN_CLASS_ALIAS = "domain_class_alias"
+KEY_DOMAIN_CLASS = "domain_class"
+KEY_PROPERTY_ALIAS = "property_alias"
+KEY_PROPERTY = "property"
+KEY_RANGE_CLASS = "range_class"
 
 
 ### PropertyHandler classes ##################################################
@@ -153,6 +171,35 @@ class PropertyHandler:
                     extra={ISSUE_TYPE: IssueType.RANGE_CLASS_NOT_SELECTED},
                 )
 
+        if self.range_class is None:
+            logger.info(
+                "Key %s -> APPN property %s",
+                property_name,
+                target_property.curie,
+                extra={
+                    PARSER_KEYS: {
+                        KEY_DOMAIN_CLASS: parser.target_class,
+                        KEY_PROPERTY_ALIAS: property_name,
+                        KEY_PROPERTY: target_property,
+                    }
+                },
+            )
+        else:
+            logger.info(
+                "Key %s -> APPN property %s with values of class %s",
+                property_name,
+                target_property.curie,
+                self.range_class.curie,
+                extra={
+                    PARSER_KEYS: {
+                        KEY_DOMAIN_CLASS: parser.target_class,
+                        KEY_PROPERTY_ALIAS: property_name,
+                        KEY_PROPERTY: target_property,
+                        KEY_RANGE_CLASS: self.range_class,
+                    }
+                },
+            )
+
     def process(self, subject_iri: IRI, value: Any) -> None:
         """Process supplied value and update graph with primary triple and any required by configuration.
 
@@ -167,28 +214,34 @@ class PropertyHandler:
                 if (isinstance(value, str) and value.startswith("http"))
                 else Literal(value)
             )
+
         # If the range class is for an XML type, convert the value.
         elif self.range_class.ns == XML_SCHEMA:
             value = self.get_xml_value(self.range_class, value)
+            logger.debug("XML value %s (type %s)", str(value), str(type(value)))
+
         # If a range class is expected and the value is a string, either map the
         # value to a known IRI from the embedded instances or from the dictionary
         # or to a new IRI (which should be described elsewhere in the source being
-        # parsed).
-        elif isinstance(value, str):
-            value = self.get_iri_for_class_instance(self.range_class, value)
-        # Otherwise, treat anything other than an IRI as an error but insert it as
-        # a Literal value.
+        # parsed). Otherwise, treat anything other than an IRI as an error but
+        # insert it as a Literal value.
+        #
+        # WARNING: IRI is a subclass of URIRef which is a subclass of str, so
+        #     the check for IRI must come before that for str.
         elif not isinstance(value, IRI):
-            logger.error(
-                "Unexpected type (%s) for value %s - expected value to be identifier for instance of class %s as value for property %s for class %s",
-                type(value),
-                value,
-                self.range_class.curie,
-                self.target_property.curie,
-                self.parser.target_class.curie,
-                extra={ISSUE_TYPE: IssueType.BAD_VALUE},
-            )
-            value = Literal(value)
+            if isinstance(value, str):
+                value = self.get_iri_for_class_instance(self.range_class, value)
+            else:
+                logger.error(
+                    "Unexpected type (%s) for value %s - expected value to be identifier for instance of class %s as value for property %s for class %s",
+                    type(value),
+                    value,
+                    self.range_class.curie,
+                    self.target_property.curie,
+                    self.parser.target_class.curie,
+                    extra={ISSUE_TYPE: IssueType.BAD_VALUE},
+                )
+                value = Literal(value)
 
         # Add the triple and any associated expanded properties. For
         # skos:prefLabel, add the class name in parentheses to the
@@ -196,11 +249,12 @@ class PropertyHandler:
         self.parser.add(subject_iri, self.target_property, value)
         for expanded_property in self.expanded_properties:
             if expanded_property == SKOS_PREF_LABEL:
-                self.parser.add(
-                    subject_iri,
-                    SKOS_PREF_LABEL,
-                    Literal(f"{value!s} ({self.parser.target_class.name})"),
-                )
+                if self.parser.generate_concepts:
+                    self.parser.add(
+                        subject_iri,
+                        SKOS_PREF_LABEL,
+                        Literal(f"{value!s} ({self.parser.target_class.name})"),
+                    )
             else:
                 self.parser.add(subject_iri, expanded_property, value)
 
@@ -233,10 +287,11 @@ class PropertyHandler:
             if value_class == XML_BOOLEAN:
                 if isinstance(value, bool):
                     return Literal(value)
-                if isinstance(value, str) and (
-                    value.lower() in TRUE_STRINGS or value.lower() in FALSE_STRINGS
-                ):
-                    return Literal(True)
+                if isinstance(value, str):
+                    if value.lower() in TRUE_STRINGS:
+                        return Literal(True)
+                    if value.lower() in FALSE_STRINGS:
+                        return Literal(False)
                 # Otherwise drop through.
             else:
                 logger.critical(
@@ -436,6 +491,7 @@ class DictParser:
         organisation: Organisation,
         *,
         graph: Graph | None = None,
+        data_frame: pd.DataFrame | None = None,
         generate_concepts: bool = False,
         is_embedded: bool = False,
         namespace: str | None = None,
@@ -446,14 +502,21 @@ class DictParser:
         The `Dictionary` and `LinkedDataSettings` control features of the generated
         linked data.
 
+        Data can be stored in a `Graph` and/or in a `pandas.DataFrame`. These
+        may be provided when constructing the parser. Otherwise, if the parser
+        has `generate_concepts` set to True, it creates a `Graph`. If not, the
+        parser will select one option based on the `LinkedDataSettings`.`ro_crate_table_classes`
+        option for the `target_class` and create either a `Graph` or a
+        `pandas.DataFrame`.
+
         :param dictionary: `Dictionary` object providing existing linked data
             definitions that define classes, properties and existing instances
             of classes.
         :param target_class: IRI for class into which this parser converts
             dictionary properties.
         :param organisation: `Organisation` to which instances will be related.
-        :param graph: `Graph` into which triples should be written - defaults to
-            new `Graph` created by this object.
+        :param graph: `Graph` into which triples should be written.
+        :param graph: `pandas.DataFrame` into which triples should be written.
         :param generate_concepts: If true, all instances should also be instances
             of `skos:Concept` and belong to a shared `skos:ConceptScheme`.
         :param is_embedded: Indicates that this parser is controlled by another
@@ -468,11 +531,22 @@ class DictParser:
         self.dictionary = dictionary
         self.target_class = target_class
         self.organisation = organisation
-        self.graph = Graph() if graph is None else graph
+        self.graph = graph
+        self.data_frame = data_frame
         self.generate_concepts = generate_concepts
         self.is_embedded = is_embedded
         self.namespace = self.organisation.namespace if namespace is None else namespace
         self.restrict_to_namespace = restrict_to_namespace
+        output_format = LinkedDataSettings().get_format_for_class_triples(target_class)
+        if graph is None and (self.generate_concepts or output_format.use_graph()):
+            self.graph = Graph()
+        if (
+            data_frame is None
+            and not self.generate_concepts
+            and output_format.use_dataframe()
+        ):
+            self.data_frame = pd.DataFrame()
+        self.data_frame_rows: dict[str, int] = {}
         # Settings for configured behaviours.
         self.settings = LinkedDataSettings()
         self.scheme_iri: IRI | None = None
@@ -500,7 +574,7 @@ class DictParser:
         # Special post-processing handler to represent instances as `skos:Concept`s
         # if requested - this will also generate any `skos:ConceptScheme`
 
-    def parse(self, properties: dict[str, Any] | pd.Series[Any]) -> IRI | None:
+    def parse(self, properties: PropertyDictionary) -> IRI | None:
         """Process values for an instance supplied as a dictionary, creating `PropertyHandler`s as needed.
 
         Updates the existing property handlers so all dictionary keys are mapped.
@@ -525,7 +599,9 @@ class DictParser:
             # Execute all handlers matched by property keys, adding new
             # ones as required.
             for property_name, property_value in properties.items():
-                if isinstance(property_value, str):
+                if not isinstance(property_value, IRI) and isinstance(
+                    property_value, str
+                ):
                     property_value = property_value.strip()  # noqa PLW2901
                 if property_value not in NULL_VALUES:
                     if property_name not in self.property_handlers:
@@ -537,9 +613,7 @@ class DictParser:
             self.finalise_parsing(instance_iri)
         return instance_iri
 
-    def initialise_parsing(
-        self, properties: dict[str, Any] | pd.Series[Any]
-    ) -> IRI | None:
+    def initialise_parsing(self, properties: PropertyDictionary) -> IRI | None:
         """Prepare parser for new dictionary record.
 
         Only proceed if a name is found for a new instance. If so, locate any
@@ -574,7 +648,7 @@ class DictParser:
                     )
                     # Generate the `rdf:type` properties.
                     for explicit_class in self.explicit_classes:
-                        self.graph.add((instance_iri, RDF_TYPE, explicit_class))
+                        self.add(instance_iri, RDF_TYPE, explicit_class)
                     return instance_iri
         return None
 
@@ -633,6 +707,7 @@ class DictParser:
                         graph=self.graph,
                         generate_concepts=self.generate_concepts,
                         is_embedded=True,
+                        namespace=self.namespace,
                     )
                     embedded_parsers[embedded_parser.required_prefix] = embedded_parser
         return embedded_parsers
@@ -791,8 +866,25 @@ class DictParser:
         return instance_iri
 
     def add(self, subject_: IRI, predicate_: IRI, object_: Node) -> None:
-        """Add a triple to the `Graph`."""
-        self.graph.add((subject_, predicate_, object_))
+        """Add a triple to the `Graph` and/or `pandas.DataFrame`."""
+        if self.graph is not None:
+            self.graph.add((subject_, predicate_, object_))
+        if self.data_frame is not None:
+            row_id = subject_.curie
+            if isinstance(object_, IRI):
+                value = object_.curie
+            elif isinstance(object_, Literal):
+                value = object_.value
+            else:
+                value = str(value)
+            if row_id not in self.data_frame_rows:
+                row_index = len(self.data_frame)
+                self.data_frame.loc[row_index] = {"id": row_id, predicate_.curie: value}
+                self.data_frame_rows[row_id] = row_index
+            else:
+                self.data_frame.loc[self.data_frame_rows[row_id], predicate_.curie] = (
+                    value
+                )
 
     def get_target_class(self) -> IRI:
         """Return the IRI for the target class for instances."""
@@ -802,9 +894,13 @@ class DictParser:
         """Return the required prefix filtering properties handled by this parser."""
         return self.required_prefix
 
-    def get_graph(self) -> Graph:
+    def get_graph(self) -> Graph | None:
         """Return the `Graph` instance."""
         return self.graph
+
+    def get_data_frame(self) -> pd.DataFrame | None:
+        """Return the `pandas.DataFrame` instance."""
+        return self.data_frame
 
 
 ### OutputFormat ##############################################################
@@ -814,13 +910,13 @@ class OutputFormat(StrEnum):
     """Simple class for vocabulary output formats."""
 
     TURTLE = "ttl"
-    JSON = "json"
+    JSONLD = "json-ld"
 
 
-### ExcelVocabularyParser #####################################################
+### ExcelParser #####################################################
 
 
-class ExcelVocabularyParser:
+class ExcelParser:
     """Parser to generate RDF vocabularies from Excel spreadsheets.
 
     This class expects spreadsheets with sheet names matching the names
@@ -833,7 +929,14 @@ class ExcelVocabularyParser:
     """
 
     def __init__(
-        self, organisation: Organisation, appn_vocabulary_path: Path | None = None
+        self,
+        organisation: Organisation,
+        *,
+        appn_vocabulary_path: Path | None = None,
+        generate_concepts: bool = False,
+        load_organisation_vocabulary: bool = True,
+        namespace: str | None = None,
+        prefix: str | None = None,
     ) -> None:
         """Initialise parser.
 
@@ -843,7 +946,13 @@ class ExcelVocabularyParser:
         :param appn_vocabulary_path: Override for locaiton of APPN schema (for) use when
             regenerating all vocabularies.
         """
+        # The openpyxl library generates a warning ("Data Validation extension is not supported and will be removed")
+        warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
+
         self.organisation = organisation
+        self.generate_concepts = generate_concepts
+        self.namespace = self.organisation.namespace if namespace is None else namespace
+        self.prefix = prefix
 
         # Load schemas that will be used in the processing. For any node
         # vocabulary, include the current APPN central vocabulary so its
@@ -854,6 +963,8 @@ class ExcelVocabularyParser:
         self.dictionary.load(DC_SCHEMA)
         if organisation.id != CENTRAL_ORGANISATION:
             self.dictionary.load(APPN_VOCABULARY, asset_path=appn_vocabulary_path)
+        if load_organisation_vocabulary:
+            self.dictionary.load(organisation.namespace)
         self.dictionary.import_references()
 
         # Create a graph to contain the new vocabulary and initialise the
@@ -877,7 +988,19 @@ class ExcelVocabularyParser:
         if organisation.id != CENTRAL_ORGANISATION:
             appn = LinkedDataSettings().get_appn()
             self.graph.bind(appn.prefix, appn.namespace)
+        if load_organisation_vocabulary:
+            self.graph.bind(organisation.prefix, organisation.namespace)
+        if namespace is not None and prefix is not None:
+            self.graph.bind(prefix, namespace)
 
+        if (
+            self.namespace
+            not in NamespaceDefinitionManager().get_namespace_dictionary()
+            and self.prefix is not None
+        ):
+            NamespaceDefinitionManager().add_namespace_definition(
+                NamespaceDefinition(namespace=self.namespace, prefix=self.prefix)
+            )
         # Convenience dictionary for checking class names.
         self.appn_classes_by_name = {
             c.name: c for c in self.dictionary.list_classes(namespace=APPN_SCHEMA)
@@ -904,14 +1027,26 @@ class ExcelVocabularyParser:
                 if sheet_class in self.appn_classes_by_name:
                     appn_class = self.appn_classes_by_name[sheet_class]
 
+                    logger.info(
+                        "Sheet %s -> APPN class %s",
+                        sheet,
+                        appn_class.curie,
+                        extra={
+                            PARSER_KEYS: {
+                                KEY_DOMAIN_CLASS_ALIAS: sheet,
+                                KEY_DOMAIN_CLASS: appn_class,
+                            }
+                        },
+                    )
+
                     parser = DictParser(
                         self.dictionary,
                         appn_class,
                         self.organisation,  # type: ignore[arg-type]
                         graph=self.graph,
-                        generate_concepts=True,
+                        generate_concepts=self.generate_concepts,
+                        namespace=self.namespace,
                     )
-
                     try:
                         excel_sheet_dataframe = pd.read_excel(
                             excel_path, sheet_name=sheet, header=None, dtype="str"
@@ -962,16 +1097,12 @@ class ExcelVocabularyParser:
         """
         latest_version = Dictionary(self.graph)
 
-        subjects = latest_version.list_unique_subjects(
-            namespace=self.organisation.namespace
-        )
-        objects = latest_version.list_unique_objects(
-            namespace=self.organisation.namespace
-        )
+        subjects = latest_version.list_unique_subjects(namespace=self.namespace)
+        objects = latest_version.list_unique_objects(namespace=self.namespace)
 
         missing = [o for o in objects if o not in subjects]
         for iri in missing:
-            logger.error(
+            logger.info(
                 "The vocabulary references an undefined instance %s",
                 iri.curie,
                 extra={ISSUE_TYPE: IssueType.MISSING_REFERENCE},
@@ -993,62 +1124,66 @@ class ExcelVocabularyParser:
         """
         all_present = True
 
-        published_version = Dictionary()
-        published_version.load(self.organisation.namespace)  # type: ignore[arg-type]
+        # Only check existing terms for node vocabularies.
+        if self.organisation.namespace == self.namespace:
+            published_version = Dictionary()
+            published_version.load(self.organisation.namespace)  # type: ignore[arg-type]
 
-        latest_version = Dictionary(self.graph)
+            latest_version = Dictionary(self.graph)
 
-        published_instances = published_version.list_unique_subjects()
-        published_type_dictionary = self.get_types_for_instances(published_version)
+            published_instances = published_version.list_unique_subjects()
+            published_type_dictionary = self.get_types_for_instances(published_version)
 
-        latest_instances = latest_version.list_unique_subjects()
-        latest_type_dictionary = self.get_types_for_instances(latest_version)
+            latest_instances = latest_version.list_unique_subjects()
+            latest_type_dictionary = self.get_types_for_instances(latest_version)
 
-        for instance in published_instances:
-            if instance not in latest_instances:
-                all_present = False
-                logger.warning(
-                    "Published version of vocabulary includes a term %s - adding to the new version",
-                    instance.curie,
-                    extra={ISSUE_TYPE: IssueType.MISSING_INSTANCE},
-                )
-                if add_missing_terms:
-                    for triple in published_version.list_triples_for_subject(instance):
-                        latest_version.add_triple(triple)
-            else:
-                missing_types: list[IRI] = sorted(
-                    published_type
-                    for published_type in published_type_dictionary[instance]
-                    if published_type not in latest_type_dictionary[instance]
-                )
-                # Ignore cases where the previously reported class is a superclass for one of the
-                # reported classes
-                reportable_types: list[IRI] = []
-                for missing_type in missing_types:
-                    subclasses = latest_version.list_subclasses(missing_type)
-                    if not any(
-                        subclass in latest_type_dictionary[instance]
-                        for subclass in subclasses
-                    ):
-                        reportable_types.append(missing_type)
-                if len(reportable_types) > 0:
+            for instance in published_instances:
+                if instance not in latest_instances:
                     all_present = False
                     logger.warning(
-                        "Published term %s has missing types: %s - adding these to the new version",
+                        "Published version of vocabulary includes a term %s - adding to the new version",
                         instance.curie,
-                        ", ".join(
-                            [
-                                reportable_type.curie
-                                for reportable_type in reportable_types
-                            ]
-                        ),
-                        extra={ISSUE_TYPE: IssueType.MISSING_INSTANCE_TYPE},
+                        extra={ISSUE_TYPE: IssueType.MISSING_INSTANCE},
                     )
                     if add_missing_terms:
-                        for missing_type in missing_types:
-                            latest_version.add_triple(
-                                Triple(instance, RDF_TYPE, missing_type)
-                            )
+                        for triple in published_version.list_triples_for_subject(
+                            instance
+                        ):
+                            latest_version.add_triple(triple)
+                else:
+                    missing_types: list[IRI] = sorted(
+                        published_type
+                        for published_type in published_type_dictionary[instance]
+                        if published_type not in latest_type_dictionary[instance]
+                    )
+                    # Ignore cases where the previously reported class is a superclass for one of the
+                    # reported classes
+                    reportable_types: list[IRI] = []
+                    for missing_type in missing_types:
+                        subclasses = latest_version.list_subclasses(missing_type)
+                        if not any(
+                            subclass in latest_type_dictionary[instance]
+                            for subclass in subclasses
+                        ):
+                            reportable_types.append(missing_type)
+                    if len(reportable_types) > 0:
+                        all_present = False
+                        logger.warning(
+                            "Published term %s has missing types: %s - adding these to the new version",
+                            instance.curie,
+                            ", ".join(
+                                [
+                                    reportable_type.curie
+                                    for reportable_type in reportable_types
+                                ]
+                            ),
+                            extra={ISSUE_TYPE: IssueType.MISSING_INSTANCE_TYPE},
+                        )
+                        if add_missing_terms:
+                            for missing_type in missing_types:
+                                latest_version.add_triple(
+                                    Triple(instance, RDF_TYPE, missing_type)
+                                )
 
         return all_present
 
@@ -1082,12 +1217,12 @@ class ExcelVocabularyParser:
         valid = self.verify_existing_terms()
         return self.verify_referenced_objects() and valid
 
-    def serialize(self, vocabulary_path: Path) -> bool:
+    def serialize(self, vocabulary_path: Path, output_format: str = "ttl") -> bool:
         """Write the vocabulary to a file.
 
         :param vocabulary_path: Path for output file.
         :param format: Specifies linked data output format, with Turtle as default.
         :return: True if successful.
         """
-        self.graph.serialize(destination=vocabulary_path)
+        self.graph.serialize(destination=vocabulary_path, format=output_format)
         return True

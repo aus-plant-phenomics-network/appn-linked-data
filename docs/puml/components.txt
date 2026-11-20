@@ -18,8 +18,8 @@ Collects issues relevant to
 user.
 ]
 
-component ExcelVocabularyParser #ddffdd [
-ExcelVocabularyParser
+component ExcelParser #ddffdd [
+ExcelParser
 (ld_parser.py)
 ----
 Generates vocabulary from
@@ -112,9 +112,9 @@ Dictionary --> LinkedDataSettings: uses
 Dictionary --> assets: reads
 Explorer --> Dictionary: uses
 DictParser --> Dictionary: uses
-ExcelVocabularyParser --> DictParser: uses
-ExcelVocabularyParser --> assets: generates\nvocabularies
+ExcelParser --> DictParser: uses
+ExcelParser --> assets: generates\nvocabularies
 Vocabulariser --> IssueHandler: uses
 Vocabulariser --> reports: generates
-Vocabulariser --> ExcelVocabularyParser : uses
+Vocabulariser --> ExcelParser : uses
 @enduml

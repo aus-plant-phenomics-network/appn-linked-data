@@ -55,6 +55,12 @@ Explore the APPN schema, referenced schemas and the APPN and Adelaide University
 python explorer.py -a APPN -a AU
 ```
 
+Convert Excel spreadsheet to Turtle or JSON-LD
+
+```bash
+python spreadsheet_parser.py
+```
+
 ## Configure
 
 Settings live in `config/config.yaml` (committed, no secrets). Any key can be

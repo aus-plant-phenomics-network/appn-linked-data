@@ -8,6 +8,7 @@ import logging
 from datetime import datetime
 
 import pytest
+from appn_logging import collect_records
 from rdflib import Graph
 
 from appn_linked_data import (
@@ -18,11 +19,10 @@ from appn_linked_data import (
     SKOS_SCHEMA,
     Dictionary,
     DictParser,
-    IssueHandler,
-    IssueType,
     LinkedDataSettings,
     Triple,
 )
+from appn_linked_data.ld_issue import ISSUE_TYPE, IssueType
 from appn_linked_data.ld_parser import (
     NewPropertyHandler,
     NullPropertyHandler,
@@ -121,7 +121,7 @@ def modified_dictionary() -> Dictionary:
 
 def test_parse_to_default_graph(default_dictionary: Dictionary) -> None:
     organisation = LinkedDataSettings().get_organisation_by_id("UQ")
-    with IssueHandler() as issue_handler:
+    with collect_records(key=ISSUE_TYPE) as logged_issues:
         parser = DictParser(
             default_dictionary, IRI("appn:GrowthFacility"), organisation
         )
@@ -148,7 +148,7 @@ def test_parse_to_default_graph(default_dictionary: Dictionary) -> None:
         inspector = Dictionary(parser.get_graph())
         assert set(inspector.list_unique_subjects()) == {iri, iri2}
         assert IRI("appnid:gft_Pot") in inspector.list_unique_objects()
-        assert len(issue_handler.get_issues(False)) == 0
+        assert len(list(logged_issues)) == 0
 
 
 def test_parse_to_supplied_graph(default_dictionary: Dictionary) -> None:
@@ -172,7 +172,7 @@ def test_parse_to_supplied_graph(default_dictionary: Dictionary) -> None:
 
 def test_embedded_class(default_dictionary: Dictionary) -> None:
     organisation = LinkedDataSettings().get_organisation_by_id("UQ")
-    with IssueHandler():
+    with collect_records(key=ISSUE_TYPE):
         parser = DictParser(
             default_dictionary,
             IRI("appn:ObservedVariable"),
@@ -256,7 +256,7 @@ def test_embedded_class(default_dictionary: Dictionary) -> None:
 
 def test_xml_types(modified_dictionary: Dictionary) -> None:
     organisation = LinkedDataSettings().get_organisation_by_id("UQ")
-    with IssueHandler() as issue_handler:
+    with collect_records(key=ISSUE_TYPE) as logged_issues:
         parser = DictParser(
             modified_dictionary, IRI("appn:GrowthFacility"), organisation
         )
@@ -321,7 +321,7 @@ def test_xml_types(modified_dictionary: Dictionary) -> None:
             t.predicate == IRI("appn:hasDateTimeValue") and t.object.value.year >= 2026  # type: ignore[attr-defined]
             for t in triples
         )
-        assert len(issue_handler.get_issues(True)) == 0
+        assert len(list(logged_issues)) == 0
         parser.parse(
             {
                 "name": "Shed 3",
@@ -354,7 +354,9 @@ def test_xml_types(modified_dictionary: Dictionary) -> None:
             and isinstance(t.object.value, int)  # type: ignore[attr-defined]
             for t in triples
         )
-        issues = issue_handler.get_issues(True)
-        assert len(issues) == 1
-        assert len(issues[logging.ERROR]) == 1
-        assert len(issues[logging.ERROR][IssueType.BAD_VALUE]) == 4
+        issues = list(logged_issues)
+        assert len(issues) == 4
+        assert all(issue.levelno == logging.ERROR for issue in issues)
+        assert all(
+            issue.__dict__[ISSUE_TYPE] == IssueType.BAD_VALUE for issue in issues
+        )

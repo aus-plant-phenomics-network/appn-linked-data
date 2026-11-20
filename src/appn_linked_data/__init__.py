@@ -39,7 +39,6 @@ from appn_linked_data.ld_iri import (
     TriplePosition,
 )
 from appn_linked_data.ld_issue import (
-    IssueHandler,
     IssueType,
 )
 from appn_linked_data.ld_namespaces import (
@@ -51,6 +50,7 @@ from appn_linked_data.ld_parser import (
     DictParser,
 )
 from appn_linked_data.ld_settings import (
+    ClassOutputFormat,
     CompletionRule,
     ExplicitTermsFilter,
     LinkedDataSettings,
@@ -87,11 +87,11 @@ __all__ = [
     "WSU_VOCABULARY",
     "XML_SCHEMA",
     "AssetLoadLocation",
+    "ClassOutputFormat",
     "CompletionRule",
     "DictParser",
     "Dictionary",
     "ExplicitTermsFilter",
-    "IssueHandler",
     "IssueType",
     "LinkedDataSettings",
     "NamespaceDefinition",

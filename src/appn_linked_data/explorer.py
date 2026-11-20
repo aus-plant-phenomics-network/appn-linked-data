@@ -10,6 +10,8 @@ import logging
 import sys
 from typing import Any
 
+from appn_logging import configure_logging
+
 from appn_linked_data.ld_constants import APPN_SCHEMA
 from appn_linked_data.ld_dictionary import Dictionary
 
@@ -139,20 +141,6 @@ def setup_parser() -> argparse.ArgumentParser:
         subparser = subparsers.add_parser(cmd, help=subcommand_helptext.get(cmd))
         subparser.add_argument("-o", "--output-file")
 
-    parser.add_argument(
-        "-l",
-        "--log-level",
-        choices=("error", "warning", "info", "debug"),
-        default="info",
-        help="Set logging level",
-    )
-    parser.add_argument(
-        "-e",
-        "--echo-to-stderr",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Echo log messages to console",
-    )
     parser.add_argument(
         "-d",
         "--descriptions",
@@ -498,6 +486,8 @@ def execute_query(  # noqa: PLR0912 PLR0915
 
 
 if __name__ == "__main__":
+    configure_logging()
+
     parser = setup_parser()
     args = vars(parser.parse_args(sys.argv[1:]))
 

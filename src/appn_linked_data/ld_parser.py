@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import re
+import warnings
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
@@ -945,6 +946,9 @@ class ExcelParser:
         :param appn_vocabulary_path: Override for locaiton of APPN schema (for) use when
             regenerating all vocabularies.
         """
+        # The openpyxl library generates a warning ("Data Validation extension is not supported and will be removed")
+        warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
+
         self.organisation = organisation
         self.generate_concepts = generate_concepts
         self.namespace = self.organisation.namespace if namespace is None else namespace

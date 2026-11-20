@@ -117,12 +117,6 @@ def wrap_text(
     return "\n".join(rows)
 
 
-SOURCE_PATH = Path("./src/vocabulary_templates/")
-BUILD_PATH = Path("./build/vocabulary/")
-EXCEL_SHEET_BASENAME = "VocabularyTemplate_"
-EXCEL_SHEET_SUFFIX = ".xlsx"
-VOCABULARY_BASENAME = "_vocabulary"
-
 ### MAIN PROGRAM ##############################################################
 
 if __name__ == "__main__":

@@ -37,3 +37,9 @@ jobs:
 
       - name: Build
         run: python src/appn_linked_data/vocabulariser.py
+
+      - name: Upload built vocabularies and reports
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: Built vocabularies
+          path: build/

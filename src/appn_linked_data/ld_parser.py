@@ -77,7 +77,19 @@ FALSE_STRINGS = ["false", "f", "no", "n", "0"]
 # Regex for removing trailing integers.
 TRAILING_INTEGER_PATTERN = re.compile(r"[0-9]+$")
 
+# Simplify typing
 type PropertyDictionary = dict[str, Any] | pd.Series[Any]
+
+# Keys for logging description of parsed structures. PARSER_KEYS should be
+# included in the `extra` dictionary for a LogRecord. The value should be
+# a dictionary mapping one or more of the other keys to the corresponding
+# IRI.
+PARSER_KEYS = "parser_keys"
+KEY_DOMAIN_CLASS_ALIAS = "domain_class_alias"
+KEY_DOMAIN_CLASS = "domain_class"
+KEY_PROPERTY_ALIAS = "property_alias"
+KEY_PROPERTY = "property"
+KEY_RANGE_CLASS = "range_class"
 
 
 ### PropertyHandler classes ##################################################
@@ -157,6 +169,35 @@ class PropertyHandler:
                     class_list,
                     extra={ISSUE_TYPE: IssueType.RANGE_CLASS_NOT_SELECTED},
                 )
+
+        if self.range_class is None:
+            logger.info(
+                "Key %s -> APPN property %s",
+                property_name,
+                target_property.curie,
+                extra={
+                    PARSER_KEYS: {
+                        KEY_DOMAIN_CLASS: parser.target_class,
+                        KEY_PROPERTY_ALIAS: property_name,
+                        KEY_PROPERTY: target_property,
+                    }
+                },
+            )
+        else:
+            logger.info(
+                "Key %s -> APPN property %s with values of class %s",
+                property_name,
+                target_property.curie,
+                self.range_class.curie,
+                extra={
+                    PARSER_KEYS: {
+                        KEY_DOMAIN_CLASS: parser.target_class,
+                        KEY_PROPERTY_ALIAS: property_name,
+                        KEY_PROPERTY: target_property,
+                        KEY_RANGE_CLASS: self.range_class,
+                    }
+                },
+            )
 
     def process(self, subject_iri: IRI, value: Any) -> None:
         """Process supplied value and update graph with primary triple and any required by configuration.
@@ -982,6 +1023,18 @@ class ExcelParser:
                 if sheet_class in self.appn_classes_by_name:
                     appn_class = self.appn_classes_by_name[sheet_class]
 
+                    logger.info(
+                        "Sheet %s -> APPN class %s",
+                        sheet,
+                        appn_class.curie,
+                        extra={
+                            PARSER_KEYS: {
+                                KEY_DOMAIN_CLASS_ALIAS: sheet,
+                                KEY_DOMAIN_CLASS: appn_class,
+                            }
+                        },
+                    )
+
                     parser = DictParser(
                         self.dictionary,
                         appn_class,
@@ -990,7 +1043,6 @@ class ExcelParser:
                         generate_concepts=self.generate_concepts,
                         namespace=self.namespace,
                     )
-
                     try:
                         excel_sheet_dataframe = pd.read_excel(
                             excel_path, sheet_name=sheet, header=None, dtype="str"
@@ -1046,7 +1098,7 @@ class ExcelParser:
 
         missing = [o for o in objects if o not in subjects]
         for iri in missing:
-            logger.error(
+            logger.info(
                 "The vocabulary references an undefined instance %s",
                 iri.curie,
                 extra={ISSUE_TYPE: IssueType.MISSING_REFERENCE},

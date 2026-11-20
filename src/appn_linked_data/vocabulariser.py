@@ -25,8 +25,6 @@ from appn_linked_data.ld_settings import (
 
 logger = logging.getLogger(__name__)
 
-configure_logging()
-
 ### process_argv ##############################################################
 
 ARG_FORMAT = "format"
@@ -117,6 +115,8 @@ VOCABULARY_BASENAME = "_vocabulary"
 ### MAIN PROGRAM ##############################################################
 
 if __name__ == "__main__":
+    configure_logging()
+
     settings = LinkedDataSettings()
 
     args = process_argv(sys.argv, settings)

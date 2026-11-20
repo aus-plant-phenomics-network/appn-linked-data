@@ -14,14 +14,15 @@ from typing import Any
 from appn_logging import collect_records, configure_logging
 
 from appn_linked_data.ld_issue import ISSUE_TYPE, IssueType
-from appn_linked_data.ld_parser import ExcelParser, OutputFormat
+from appn_linked_data.ld_parser import (
+    ExcelParser,
+    OutputFormat,
+)
 from appn_linked_data.ld_settings import (
     LinkedDataSettings,
 )
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler())
 
 
 ### process_argv ##############################################################
@@ -113,7 +114,7 @@ def wrap_text(
         initial_indent=" " * initial_indent,
         subsequent_indent=" " * subsequent_indent,
     )
-    return "\n".join(rows).strip()
+    return "\n".join(rows)
 
 
 SOURCE_PATH = Path("./src/vocabulary_templates/")
@@ -133,7 +134,7 @@ if __name__ == "__main__":
 
     spreadsheet = Path(args["spreadsheet"])
     if not spreadsheet.exists():
-        logger.error("Spreadsheet %s does not exist", str(Path))
+        logger.error("Spreadsheet %s does not exist", str(spreadsheet))
         sys.exit(1)
 
     formats = args[ARG_FORMAT]
